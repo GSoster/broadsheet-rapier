@@ -49,3 +49,13 @@ test(schemas): add POI schema validation fixtures
 ## Changelog
 
 Log meaningful additions under `[Unreleased]` in `CHANGELOG.md` as you go, not at the end of a session. Move entries to a dated version section on release.
+
+## Definition of Done (every phase)
+
+A phase is not complete until all four are true:
+1. `npx tsc --noEmit` passes clean — paste the actual terminal output, not a summary.
+2. `npm run test` passes clean — paste the actual terminal output, not a summary.
+3. The full contents of every file created or changed are shown.
+4. Every judgment call or ambiguity is listed explicitly, never silently resolved.
+
+Do not proceed to the next phase until the user explicitly approves.
