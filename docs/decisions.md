@@ -42,3 +42,11 @@ The earlier decision (above) said it shouldn't be exposed as a UI action, but no
 
 **`COMMAND_ADJUST_CURRENCY` auto-normalizes bronze→silver→gold on every adjustment; no negative-balance protection added.**
 `game-design-spec.md` §5 states the 20:20 conversion rate but doesn't say whether it's applied automatically; auto-normalizing was inferred from `execution-plan.md` Phase 5 mentioning a "currency conversion boundaries (400 bronze = 1 gold)" store test. Negative-balance handling (e.g. blocking an unaffordable purchase) was deliberately left out — that's part of the economy-balance open design gap, not a structural/type concern, and inventing it now would preempt that spec.
+
+**Testing moved from a dedicated end-phase to alongside implementation.**
+Phase 3's command/store logic (shift rollover, currency conversion,
+reputation clamping) shipped and was approved across two phases with
+zero behavioral test coverage — only type-checking. Deferring all
+tests to Phase 5 meant real logic bugs could sit undetected for
+multiple approval cycles. Definition of Done now requires tests
+alongside any new logic in the same phase it's introduced.

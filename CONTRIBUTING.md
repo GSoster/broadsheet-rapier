@@ -52,10 +52,16 @@ Log meaningful additions under `[Unreleased]` in `CHANGELOG.md` as you go, not a
 
 ## Definition of Done (every phase)
 
-A phase is not complete until all four are true:
-1. `npx tsc --noEmit` passes clean — paste the actual terminal output, not a summary.
-2. `npm run test` passes clean — paste the actual terminal output, not a summary.
-3. The full contents of every file created or changed are shown.
-4. Every judgment call or ambiguity is listed explicitly, never silently resolved.
+A phase is not complete until all five are true:
+1. `npx tsc --noEmit` passes clean — paste the actual terminal output.
+2. `npm run test` passes clean — paste the actual terminal output.
+3. Any new command handler, store logic, or other non-trivial pure
+   function introduced this phase has unit test coverage in the same
+   phase — not deferred to a later "testing phase." Type-checking is
+   not a substitute for behavioral verification.
+4. The full contents of every file created or changed are shown,
+   unless the user explicitly waives this for a given phase.
+5. Every judgment call or ambiguity is listed explicitly, never
+   silently resolved.
 
 Do not proceed to the next phase until the user explicitly approves.

@@ -1,0 +1,7 @@
+{
+  "id": "settlement_valdeombra_city",
+  "name": "Valdeombra",
+  "description": "The city of Valdeombra sprawls along a slow black river, its skyline a tangle of church spires, guild towers, and crooked chimneys forever trailing woodsmoke. By day it runs on bells, bread ovens, and bureaucratic ledgers; by night the fog off the canals swallows the lantern light and lets everyone with something to hide get on with it.",
+  "isUnlocked": true,
+  "districtIds": ["district_lantern_ward"]
+}

@@ -1,0 +1,11 @@
+{
+  "id": "actor_mara_venn",
+  "name": "Mara Venn",
+  "description": "A City Watch sergeant who spends more off-duty hours at the Crooked Hour than at the watch-house, and hears more there because of it. Sharp-eyed, unhurried, and openly unimpressed by rank.",
+  "isUnlocked": true,
+  "imageAsset": "/content/assets/images/actors/mara_venn.webp",
+  "poiId": "poi_crooked_hour_tavern",
+  "factionIds": ["faction_city_watch"],
+  "title": "City Watch Sergeant",
+  "initialDialogue": "Another broadsheet gone quiet and nobody's talking. Funny how that keeps happening to the ones printing the truth."
+}

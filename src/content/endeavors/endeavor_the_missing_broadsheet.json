@@ -1,0 +1,20 @@
+{
+  "id": "endeavor_the_missing_broadsheet",
+  "title": "The Missing Broadsheet",
+  "description": "The Gazette's evening press has gone dark two nights running, and its printer hasn't been seen since. Broadsheets don't stop running themselves — someone leaned on him, or worse, and the presses in this city rarely stay quiet by accident.",
+  "isUnlocked": true,
+  "initialPhaseId": "phase_ask_around",
+  "phases": {
+    "phase_ask_around": {
+      "id": "phase_ask_around",
+      "objectiveText": "Ask around the Lantern Ward — barkeeps and bouncers hear things printers don't say to the Watch.",
+      "nextPhaseOnSuccess": "phase_confront_the_buyer",
+      "unlocksNodesOnComplete": []
+    },
+    "phase_confront_the_buyer": {
+      "id": "phase_confront_the_buyer",
+      "objectiveText": "Someone paid good silver to keep that press silent. Find out who, and ask them why in person.",
+      "unlocksNodesOnComplete": []
+    }
+  }
+}

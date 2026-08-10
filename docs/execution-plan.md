@@ -44,14 +44,28 @@ This slice exists to prove the schema/store/render pipeline works — it is not 
 
 ## Phase 5 — Vitest Suites
 
+Most command/store logic is now tested as it's introduced, per the
+updated Definition of Done in CONTRIBUTING.md (see docs/decisions.md).
+Phase 3's retroactive gap is closed separately, before this phase
+starts. This phase covers what isn't naturally covered elsewhere:
+
 - `schemas.test.ts` — valid/invalid fixture parsing per schema.
-- `playerStore.test.ts` — initial state shape, currency conversion boundaries (400 bronze = 1 gold), shift/day rollover at `NIGHT` → `MORNING` + day increment, node unlock mutation.
-- `commands.test.ts` — one test per `CommandType`, asserting state delta and that unrelated state is untouched.
-- `minigames.test.ts` — tests the plumbing contract only (payload dispatch on resolve), not mechanic correctness, since mechanics aren't specified yet.
+- `playerStore.test.ts` — anything not already covered by
+  `commands.test.ts`: initial state shape, save export/import
+  (including rejection of an invalid/corrupted file per
+  `web-implementation.md` §6).
+- `commands.test.ts` — audit only at this point, not first-write:
+  confirm every `CommandType` has coverage from when it was
+  introduced; fill in any handler that's still untested.
+- `minigames.test.ts` — tests the plumbing contract only (payload
+  dispatch on resolve), not mechanic correctness, since mechanics
+  aren't specified yet.
 
-Existing tests are never deleted or weakened (`CONTRIBUTING.md`); new coverage is additive only.
+Existing tests are never deleted or weakened (`CONTRIBUTING.md`); new
+coverage is additive only.
 
-(Test runner itself is already configured from Phase 1 — this phase is only about writing the actual suites.)
+(Test runner itself is already configured from Phase 1 — this phase
+is only about writing the remaining suites.)
 
 ## Phase 6 — UI Components
 
