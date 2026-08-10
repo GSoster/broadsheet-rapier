@@ -1,0 +1,91 @@
+import { describe, expect, it } from "vitest";
+import { SettlementSchema } from "../content/schemas/settlement.schema";
+import { DistrictSchema } from "../content/schemas/district.schema";
+import { PoiSchema } from "../content/schemas/poi.schema";
+import { ActorSchema } from "../content/schemas/actor.schema";
+import { FactionSchema } from "../content/schemas/faction.schema";
+import { EndeavorSchema } from "../content/schemas/endeavor.schema";
+
+import validSettlement from "../content/settlements/settlement_valdeombra_city.json";
+import validDistrict from "../content/districts/district_lantern_ward.json";
+import validPoi from "../content/pois/poi_crooked_hour_tavern.json";
+import validActor from "../content/actors/actor_mara_venn.json";
+import validFaction from "../content/factions/faction_city_watch.json";
+import validEndeavor from "../content/endeavors/endeavor_the_missing_broadsheet.json";
+
+describe("SettlementSchema", () => {
+  it("accepts the starter settlement fixture", () => {
+    expect(SettlementSchema.safeParse(validSettlement).success).toBe(true);
+  });
+
+  it("rejects a settlement missing districtIds", () => {
+    const invalid: Record<string, unknown> = { ...validSettlement };
+    delete invalid.districtIds;
+    expect(SettlementSchema.safeParse(invalid).success).toBe(false);
+  });
+});
+
+describe("DistrictSchema", () => {
+  it("accepts the starter district fixture", () => {
+    expect(DistrictSchema.safeParse(validDistrict).success).toBe(true);
+  });
+
+  it("rejects a district with a non-boolean isUnlocked", () => {
+    const invalid = { ...validDistrict, isUnlocked: "yes" };
+    expect(DistrictSchema.safeParse(invalid).success).toBe(false);
+  });
+});
+
+describe("PoiSchema", () => {
+  it("accepts the starter poi fixture", () => {
+    expect(PoiSchema.safeParse(validPoi).success).toBe(true);
+  });
+
+  it("rejects a poi with an invalid Shift value", () => {
+    const invalid = { ...validPoi, availableShifts: ["EVENING", "MIDNIGHT"] };
+    expect(PoiSchema.safeParse(invalid).success).toBe(false);
+  });
+});
+
+describe("ActorSchema", () => {
+  it("accepts the starter actor fixture", () => {
+    expect(ActorSchema.safeParse(validActor).success).toBe(true);
+  });
+
+  it("rejects an actor missing initialDialogue", () => {
+    const invalid: Record<string, unknown> = { ...validActor };
+    delete invalid.initialDialogue;
+    expect(ActorSchema.safeParse(invalid).success).toBe(false);
+  });
+});
+
+describe("FactionSchema", () => {
+  it("accepts the starter faction fixture", () => {
+    expect(FactionSchema.safeParse(validFaction).success).toBe(true);
+  });
+
+  it("rejects a faction missing description", () => {
+    const invalid: Record<string, unknown> = { ...validFaction };
+    delete invalid.description;
+    expect(FactionSchema.safeParse(invalid).success).toBe(false);
+  });
+});
+
+describe("EndeavorSchema", () => {
+  it("accepts the starter endeavor fixture", () => {
+    expect(EndeavorSchema.safeParse(validEndeavor).success).toBe(true);
+  });
+
+  it("rejects an endeavor phase missing unlocksNodesOnComplete", () => {
+    const invalid = {
+      ...validEndeavor,
+      phases: {
+        phase_ask_around: {
+          id: "phase_ask_around",
+          objectiveText: "Ask around.",
+        },
+      },
+    };
+    expect(EndeavorSchema.safeParse(invalid).success).toBe(false);
+  });
+});

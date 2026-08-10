@@ -38,6 +38,24 @@ function extractPlayerState(store: PlayerStore): PlayerState {
   };
 }
 
+export type SaveValidationResult =
+  | { success: true; data: PlayerState }
+  | { success: false; error: string };
+
+export function parseAndValidateSave(rawJson: string): SaveValidationResult {
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(rawJson);
+  } catch {
+    return { success: false, error: "File is not valid JSON." };
+  }
+  const result = PlayerStateSchema.safeParse(parsed);
+  if (!result.success) {
+    return { success: false, error: "Save file does not match the expected PlayerState shape." };
+  }
+  return { success: true, data: result.data };
+}
+
 export const usePlayerStore = create<PlayerStore>()(
   persist(
     (set, get) => ({
@@ -64,15 +82,9 @@ export const usePlayerStore = create<PlayerStore>()(
 
       importSave: async (file) => {
         const text = await file.text();
-        let parsed: unknown;
-        try {
-          parsed = JSON.parse(text);
-        } catch {
-          return { success: false, error: "File is not valid JSON." };
-        }
-        const result = PlayerStateSchema.safeParse(parsed);
+        const result = parseAndValidateSave(text);
         if (!result.success) {
-          return { success: false, error: "Save file does not match the expected PlayerState shape." };
+          return { success: false, error: result.error };
         }
         set({ ...result.data, eventLog: [] });
         return { success: true };

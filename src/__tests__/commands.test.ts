@@ -85,6 +85,15 @@ describe("COMMAND_ADJUST_REPUTATION", () => {
     });
     expect(next.reputation.actors.actor_mara_venn).toBe(-100);
   });
+
+  it("adjusts normally when the result stays within [-100, 100]", () => {
+    const state = makeState({ reputation: { factions: { faction_city_watch: 10 }, actors: {} } });
+    const next = applyCommand(state, {
+      type: "COMMAND_ADJUST_REPUTATION",
+      payload: { targetType: "faction", targetId: "faction_city_watch", amount: 15 },
+    });
+    expect(next.reputation.factions.faction_city_watch).toBe(25);
+  });
 });
 
 describe("COMMAND_UNLOCK_NODE", () => {
@@ -112,6 +121,7 @@ describe("movement shift costs", () => {
       payload: { districtId: "district_other" },
     });
     expect(next.currentLocation.districtId).toBe("district_other");
+    expect(next.currentLocation.settlementId).toBe("settlement_valdeombra_city");
     expect(next.worldClock.shift).toBe("MORNING");
     expect(next.worldClock.day).toBe(1);
   });
@@ -144,5 +154,116 @@ describe("movement shift costs", () => {
     });
     expect(next.worldClock.shift).toBe("MORNING");
     expect(next.worldClock.day).toBe(2);
+  });
+});
+
+describe("COMMAND_MOVE_TO_POI", () => {
+  it("sets the poi and advances shifts by the supplied costShifts, leaving settlement/district untouched", () => {
+    const state = makeState({
+      worldClock: { shift: "MORNING", day: 1, season: "SPRING" },
+      currentLocation: { settlementId: "settlement_valdeombra_city", districtId: "district_lantern_ward" },
+    });
+    const next = applyCommand(state, {
+      type: "COMMAND_MOVE_TO_POI",
+      payload: { poiId: "poi_crooked_hour_tavern", costShifts: 1 },
+    });
+    expect(next.currentLocation).toEqual({
+      settlementId: "settlement_valdeombra_city",
+      districtId: "district_lantern_ward",
+      poiId: "poi_crooked_hour_tavern",
+    });
+    expect(next.worldClock.shift).toBe("AFTERNOON");
+  });
+
+  it("does not advance shifts when costShifts is omitted", () => {
+    const state = makeState({ worldClock: { shift: "MORNING", day: 1, season: "SPRING" } });
+    const next = applyCommand(state, {
+      type: "COMMAND_MOVE_TO_POI",
+      payload: { poiId: "poi_crooked_hour_tavern" },
+    });
+    expect(next.worldClock.shift).toBe("MORNING");
+  });
+});
+
+describe("COMMAND_ADD_ITEM / COMMAND_REMOVE_ITEM", () => {
+  it("adds a new item and increases quantity on repeat adds", () => {
+    let state = makeState();
+    state = applyCommand(state, {
+      type: "COMMAND_ADD_ITEM",
+      payload: { itemId: "item_lockpick", quantity: 1 },
+    });
+    expect(state.inventory).toEqual([{ itemId: "item_lockpick", quantity: 1 }]);
+
+    state = applyCommand(state, {
+      type: "COMMAND_ADD_ITEM",
+      payload: { itemId: "item_lockpick", quantity: 2 },
+    });
+    expect(state.inventory).toEqual([{ itemId: "item_lockpick", quantity: 3 }]);
+  });
+
+  it("removes quantity and drops the item entry once it hits zero, leaving other items untouched", () => {
+    const state = makeState({
+      inventory: [
+        { itemId: "item_lockpick", quantity: 3 },
+        { itemId: "item_broadsheet", quantity: 1 },
+      ],
+    });
+    const next = applyCommand(state, {
+      type: "COMMAND_REMOVE_ITEM",
+      payload: { itemId: "item_lockpick", quantity: 3 },
+    });
+    expect(next.inventory).toEqual([{ itemId: "item_broadsheet", quantity: 1 }]);
+  });
+});
+
+describe("COMMAND_UNLOCK_CLUE", () => {
+  it("adds a clue without duplicating an already-unlocked one", () => {
+    const state = makeState({ unlockedClues: ["clue_torn_ledger_page"] });
+    const next = applyCommand(state, {
+      type: "COMMAND_UNLOCK_CLUE",
+      payload: { clueId: "clue_torn_ledger_page" },
+    });
+    expect(next.unlockedClues).toEqual(["clue_torn_ledger_page"]);
+
+    const withNewClue = applyCommand(state, {
+      type: "COMMAND_UNLOCK_CLUE",
+      payload: { clueId: "clue_wax_seal" },
+    });
+    expect(withNewClue.unlockedClues).toEqual(["clue_torn_ledger_page", "clue_wax_seal"]);
+  });
+});
+
+describe("COMMAND_START_ENDEAVOR / COMMAND_ADVANCE_ENDEAVOR_PHASE", () => {
+  it("starts an endeavor at the supplied initial phase", () => {
+    const state = makeState();
+    const next = applyCommand(state, {
+      type: "COMMAND_START_ENDEAVOR",
+      payload: { endeavorId: "endeavor_the_missing_broadsheet", initialPhaseId: "phase_ask_around" },
+    });
+    expect(next.activeEndeavors.endeavor_the_missing_broadsheet).toEqual({
+      currentPhaseId: "phase_ask_around",
+      logHistory: [],
+    });
+  });
+
+  it("advances the phase, logs the prior phase, and unlocks any completed-phase nodes", () => {
+    const state = makeState({
+      activeEndeavors: {
+        endeavor_the_missing_broadsheet: { currentPhaseId: "phase_ask_around", logHistory: [] },
+      },
+    });
+    const next = applyCommand(state, {
+      type: "COMMAND_ADVANCE_ENDEAVOR_PHASE",
+      payload: {
+        endeavorId: "endeavor_the_missing_broadsheet",
+        nextPhaseId: "phase_confront_the_buyer",
+        unlocksNodesOnComplete: ["poi_crooked_hour_tavern"],
+      },
+    });
+    expect(next.activeEndeavors.endeavor_the_missing_broadsheet).toEqual({
+      currentPhaseId: "phase_confront_the_buyer",
+      logHistory: ["phase_ask_around"],
+    });
+    expect(next.unlockedNodes.poi_crooked_hour_tavern).toBe(true);
   });
 });
