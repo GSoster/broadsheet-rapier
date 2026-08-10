@@ -33,3 +33,12 @@ The project may migrate off web technology (e.g. to Godot) in the future. Mixing
 
 **Execution plan scoped explicitly as "Phase 0 — Technical Scaffold".**
 The original plan covered engine types, schemas, store, starter content, tests, and UI shell — but no actual gameplay mechanics (minigame resolution, reputation effects, economy balance). Left unscoped, an implementer would have had to invent those to make anything "playable." Scaffold is now bounded to proving the architecture with inert content; gameplay mechanics require their own spec before implementation continues past it.
+
+**`COMMAND_NEXT_DAY`'s internal-only status enforced structurally, not just by convention.**
+The earlier decision (above) said it shouldn't be exposed as a UI action, but nothing stopped code from dispatching it directly. `applyCommand` now throws if `COMMAND_NEXT_DAY` is dispatched, and the day-rollover logic was moved into a private function called only by the `COMMAND_ADVANCE_SHIFT` handler. Prevents the derived-consequence-only guarantee from silently eroding as more UI code starts calling `dispatchCommand`.
+
+**Content-derived data (POI `costShifts`, Endeavor phase IDs, `unlocksNodesOnComplete`) passed via command payload instead of looked up by the store.**
+`src/engine/` may never import `src/content/`, but several command handlers (`COMMAND_MOVE_TO_POI`, `COMMAND_START_ENDEAVOR`, `COMMAND_ADVANCE_ENDEAVOR_PHASE`) need values that only exist in content JSON. Rather than weakening the decoupling rule, the caller — which does have content access — supplies those values as part of the payload. Documented in `web-implementation.md` §3 so Phase 6 (UI) follows the same pattern instead of reaching into content from the engine.
+
+**`COMMAND_ADJUST_CURRENCY` auto-normalizes bronze→silver→gold on every adjustment; no negative-balance protection added.**
+`game-design-spec.md` §5 states the 20:20 conversion rate but doesn't say whether it's applied automatically; auto-normalizing was inferred from `execution-plan.md` Phase 5 mentioning a "currency conversion boundaries (400 bronze = 1 gold)" store test. Negative-balance handling (e.g. blocking an unaffordable purchase) was deliberately left out — that's part of the economy-balance open design gap, not a structural/type concern, and inventing it now would preempt that spec.
