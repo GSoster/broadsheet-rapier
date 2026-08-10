@@ -24,6 +24,9 @@ export interface StateCommand<T = Record<string, unknown>> {
 
 export type MinigameType = "DUEL" | "LOCKPICKING" | "FISHING" | "DICE";
 
+export const SHIFTS = ["MORNING", "AFTERNOON", "EVENING", "NIGHT"] as const;
+export type Shift = (typeof SHIFTS)[number];
+
 export interface MinigameLauncherPayload {
   type: MinigameType;
   sourceId: string;
@@ -35,7 +38,7 @@ export interface MinigameLauncherPayload {
 export interface PlayerState {
   currencies: { gold: number; silver: number; bronze: number };
   worldClock: {
-    shift: "MORNING" | "AFTERNOON" | "EVENING" | "NIGHT";
+    shift: Shift;
     day: number;
     season: "SPRING" | "SUMMER" | "AUTUMN" | "WINTER";
   };
@@ -91,7 +94,7 @@ export const PlayerStateSchema: z.ZodType<PlayerState> = z.object({
     bronze: z.number(),
   }),
   worldClock: z.object({
-    shift: z.enum(["MORNING", "AFTERNOON", "EVENING", "NIGHT"]),
+    shift: z.enum(SHIFTS),
     day: z.number(),
     season: z.enum(["SPRING", "SUMMER", "AUTUMN", "WINTER"]),
   }),
