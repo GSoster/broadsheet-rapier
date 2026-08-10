@@ -15,9 +15,11 @@ Reference docs: `docs/game-design-spec.md` (what the game is), `docs/web-impleme
 
 See `docs/web-implementation.md` §7 for the full tree — do not duplicate it here; if it changes, update it there only.
 
-## Phase 1 — Engine Types
+## Phase 1 — Test Runner Setup & Engine Types
 
-`src/engine/types/index.ts`, exactly as specified in `docs/web-implementation.md` §4: `PlayerState`, `CommandType`, `StateCommand`, `MinigameType`, `MinigameLauncherPayload`, plus a `PlayerStateSchema` (Zod, for save import validation per §6).
+**1a. Test runner setup.** Vitest is installed but not wired up. Add a `test` script to `package.json` (`"test": "vitest run"`, plus optionally `"test:watch": "vitest"`), and a minimal Vitest config (either `vitest.config.ts` or a `test` block in `vite.config.ts`) so `npm run test` runs cleanly against a placeholder test. This only needs to prove the runner works — actual test suites are Phase 5.
+
+**1b. Engine types.** `src/engine/types/index.ts`, exactly as specified in `docs/web-implementation.md` §4: `PlayerState`, `CommandType`, `StateCommand`, `MinigameType`, `MinigameLauncherPayload`, plus a `PlayerStateSchema` (Zod, for save import validation per §6).
 
 `COMMAND_NEXT_DAY` is internal-only — see `web-implementation.md` §4.
 
@@ -48,6 +50,8 @@ This slice exists to prove the schema/store/render pipeline works — it is not 
 - `minigames.test.ts` — tests the plumbing contract only (payload dispatch on resolve), not mechanic correctness, since mechanics aren't specified yet.
 
 Existing tests are never deleted or weakened (`CONTRIBUTING.md`); new coverage is additive only.
+
+(Test runner itself is already configured from Phase 1 — this phase is only about writing the actual suites.)
 
 ## Phase 6 — UI Components
 
