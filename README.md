@@ -8,9 +8,17 @@ Set in the city of Valdeombra — cynical street-level intrigue, noble rivalries
 
 React (TypeScript, strict) · Vite · Tailwind CSS v4 · Zustand · Zod · Framer Motion · Vitest
 
-## Development
+## Running the Game
 
 Requires Node 24 (see `.nvmrc` — run `nvm use` if you use nvm).
+
+```bash
+npm start
+```
+
+Installs dependencies, starts the dev server, and opens the game in your browser.
+
+## Development
 
 ```bash
 npm install
