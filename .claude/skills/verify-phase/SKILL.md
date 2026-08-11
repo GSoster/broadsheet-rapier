@@ -32,7 +32,12 @@ have to be re-derived and re-typed in prose every time.
      occasional pass via the `ui-visual-check` skill, not routine
      per-phase work.
    - A schema in `src/content/schemas/` needs at least one valid and
-     one invalid fixture (`CONTRIBUTING.md`).
+     one invalid fixture in `schemas.test.ts` (`CONTRIBUTING.md`). A
+     new *content file* under an existing schema needs no test
+     changes — `content-integrity.test.ts` globs `src/content/**` and
+     validates every real file automatically; only check that this
+     test file's glob patterns still cover any newly-added content
+     subfolder.
 
 3. **Confirm scope.** Run `git status --porcelain` and check the
    changed files match what the phase actually called for — nothing
@@ -51,7 +56,14 @@ have to be re-derived and re-typed in prose every time.
    report — don't leave a check that only runs when a human remembers
    to run it locally.
 
-5. **Report judgment calls.** Per `CLAUDE.md` §1 ("do not invent
+5. **Update `CHANGELOG.md`.** Add an entry under `[Unreleased]` (Keep
+   a Changelog style: Added/Changed/Fixed) for what this phase
+   actually did, if it touched user-visible behavior — a new command,
+   a UI element, a bug fix. Don't defer this to "later" — there's no
+   later in a project without dated releases yet; entries only ever
+   get written now or never.
+
+6. **Report judgment calls.** Per `CLAUDE.md` §1 ("do not invent
    domain rules — stop and flag the gap"), anywhere a spec was
    ambiguous, silent, or self-contradictory and a decision had to be
    made to keep moving, list it explicitly in the response — don't let
@@ -60,13 +72,15 @@ have to be re-derived and re-typed in prose every time.
    (see that file's existing entries for the expected shape: the
    decision, then *why*).
 
-6. **Propose a commit message**, following `CONTRIBUTING.md`'s
+7. **Propose a commit message**, following `CONTRIBUTING.md`'s
    Conventional Commits format (`type(scope): summary`). Propose only
    — don't commit unless explicitly asked to.
 
 ## Output shape
 
 Paste the full `tsc` output (or confirm empty), the full `test`
-output, a short list of files touched, any judgment calls, and the
-proposed commit message. This is what "phase done" looks like in this
-repo — don't shortcut it even when the change feels small.
+output, a short list of files touched, confirmation `CHANGELOG.md` was
+updated (or a one-line reason it wasn't — e.g. "docs-only phase, no
+user-visible change"), any judgment calls, and the proposed commit
+message. This is what "phase done" looks like in this repo — don't
+shortcut it even when the change feels small.

@@ -10,7 +10,7 @@ React (TypeScript, strict) · Vite · Tailwind CSS v4 · Zustand · Zod · Frame
 
 ## Running the Game
 
-Requires Node 24 (see `.nvmrc` — run `nvm use` if you use nvm).
+Requires Node 24 (see [.nvmrc](.nvmrc) — run `nvm use` if you use nvm).
 
 ```bash
 npm start
@@ -25,10 +25,19 @@ npm install
 npm run dev
 ```
 
+See [CONTRIBUTING.md](CONTRIBUTING.md) for commit conventions, branching, and the Definition of Done.
+
 ## Project Docs
 
-See `docs/` for world lore, narrative inspirations, and system architecture rules. See `CLAUDE.md` for operating directives.
+- [docs/game-design-spec.md](docs/game-design-spec.md) — what the game *is*, engine-agnostic
+- [docs/web-implementation.md](docs/web-implementation.md) — how it's built in this stack (React/TS/Zustand/Zod)
+- [docs/world-lore.md](docs/world-lore.md) — setting, era constraints, tone
+- [docs/narrative-inspirations.md](docs/narrative-inspirations.md) — narrative/UI inspiration priority hierarchy
+- [docs/execution-plan.md](docs/execution-plan.md) — phased build plan and current status
+- [docs/decisions.md](docs/decisions.md) — decision log (why calls were made, not just what changed)
+- [CHANGELOG.md](CHANGELOG.md) — notable changes
+- [CLAUDE.md](CLAUDE.md) — operating directives for AI-assisted development
 
 ## License
 
-All rights reserved. See `LICENSE`.
+All rights reserved. See [LICENSE](LICENSE).

@@ -66,4 +66,20 @@ describe("MinigameOverlay", () => {
     expect(state.activeMinigame).toBeNull();
     expect(state.reputation.actors.actor_mara_venn).toBe(-10);
   });
+
+  it("renders DiceGame instead of the generic shell when the active minigame is DICE", () => {
+    usePlayerStore.setState({
+      activeMinigame: {
+        type: "DICE",
+        sourceId: "poi_crooked_hour_tavern",
+        config: { wager: 20 },
+        onSuccessCommands: [],
+        onFailureCommands: [],
+      },
+    });
+    render(<MinigameOverlay />);
+    expect(screen.getByText("Dice — Even Wins, Odd Loses")).toBeInTheDocument();
+    expect(screen.queryByText("DICE")).not.toBeInTheDocument();
+    expect(screen.queryByText(/dispatch plumbing only/)).not.toBeInTheDocument();
+  });
 });

@@ -10,12 +10,20 @@ export interface NodeInteractionSelectedActor extends NodeInteractionActor {
   initialDialogue: string;
 }
 
+export interface NodeInteractionAction {
+  id: string;
+  label: string;
+  disabled?: boolean;
+  onClick: () => void;
+}
+
 export interface NodeInteractionCanvasProps {
   poiName: string;
   poiDescription: string;
   imageAsset?: string;
   actors: NodeInteractionActor[];
   selectedActor?: NodeInteractionSelectedActor | null;
+  actions?: NodeInteractionAction[];
   onSelectActor: (actorId: string) => void;
   onLeave: () => void;
 }
@@ -26,6 +34,7 @@ export function NodeInteractionCanvas({
   imageAsset,
   actors,
   selectedActor,
+  actions,
   onSelectActor,
   onLeave,
 }: NodeInteractionCanvasProps) {
@@ -61,6 +70,21 @@ export function NodeInteractionCanvas({
         <blockquote className="border-l-2 border-indigo-600 pl-3 text-sm italic text-indigo-200">
           &ldquo;{selectedActor.initialDialogue}&rdquo;
         </blockquote>
+      ) : null}
+      {actions && actions.length > 0 ? (
+        <div className="flex flex-wrap gap-2 border-t border-indigo-900 pt-4">
+          {actions.map((action) => (
+            <button
+              key={action.id}
+              type="button"
+              disabled={action.disabled}
+              onClick={action.onClick}
+              className="rounded border border-amber-700 bg-amber-950/40 px-3 py-2 text-sm text-amber-100 disabled:cursor-not-allowed disabled:opacity-40 enabled:hover:border-amber-500"
+            >
+              {action.label}
+            </button>
+          ))}
+        </div>
       ) : null}
     </section>
   );

@@ -8,7 +8,7 @@ beforeEach(() => {
 describe("initial state", () => {
   it("matches the documented PlayerState shape", () => {
     const state = usePlayerStore.getState();
-    expect(state.currencies).toEqual({ gold: 0, silver: 0, bronze: 0 });
+    expect(state.currencies).toEqual({ gold: 0, silver: 2, bronze: 10 });
     expect(state.worldClock).toEqual({ shift: "MORNING", day: 1, season: "SPRING", weather: "CLEAR" });
     expect(state.currentLocation).toEqual({ settlementId: "", districtId: "" });
     expect(state.reputation).toEqual({ factions: {}, actors: {} });
@@ -23,6 +23,7 @@ describe("initial state", () => {
 
 describe("dispatchCommand", () => {
   it("normalizes currency at the 400 bronze = 1 gold boundary", () => {
+    usePlayerStore.setState({ currencies: { gold: 0, silver: 0, bronze: 0 } });
     usePlayerStore.getState().dispatchCommand({
       type: "COMMAND_ADJUST_CURRENCY",
       payload: { denomination: "bronze", amount: 400 },
@@ -45,7 +46,7 @@ describe("dispatchCommand", () => {
     });
     const state = usePlayerStore.getState();
     expect(state.unlockedNodes).toEqual({ district_lantern_ward: true });
-    expect(state.currencies).toEqual({ gold: 0, silver: 0, bronze: 0 });
+    expect(state.currencies).toEqual({ gold: 0, silver: 2, bronze: 10 });
   });
 
   it("appends a matching entry to the in-memory event log", () => {

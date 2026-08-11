@@ -44,7 +44,9 @@ Settlement, District, POI, Actor, and Endeavor nodes each carry an `isUnlocked` 
 
 Player reputation is tracked per-Faction and per-Actor on a `-100` to `+100` scale.
 
-**Open design gap — not yet defined:** what specific reputation values *do* in gameplay (dialogue changes, access restrictions, pricing, hostility thresholds). This must be specified before reputation effects are implemented — do not let an implementer invent tier thresholds or effects.
+**First concrete reputation effect implemented, as a worked example:** talking to Mara Venn (`actor_mara_venn`) grants +5 actor-level reputation each time; at 10 reputation with her, a new dialogue line unlocks and `endeavor_the_missing_broadsheet` auto-advances from `phase_ask_around` to `phase_confront_the_buyer`. This is one hand-authored, actor-specific threshold, not a general system — it proves reputation *can* drive dialogue/narrative branching, nothing more.
+
+**Open design gap — still not defined:** general, faction-wide tiered reputation effects (access restrictions, pricing, hostility thresholds) applying systematically across actors/factions. The Mara Venn example above does not resolve this gap — do not let an implementer generalize from it into a tier system without a spec for one.
 
 ## 8. Content Data Model
 
@@ -64,7 +66,9 @@ Conceptual field reference (concrete types live in `web-implementation.md`):
 
 Four types exist conceptually: `DUEL`, `LOCKPICKING`, `FISHING`, `DICE`. Each is triggered from a source (an Actor, a POI action, an Endeavor phase) and resolves to success or failure, which in turn triggers narrative/state consequences.
 
-**Open design gap — not yet defined:** the actual resolution mechanic, difficulty model, and win condition for each minigame type. Only the *contract* (launch with config, resolve to success/failure, dispatch consequence commands) is currently specified, in `web-implementation.md`. Do not implement gameplay mechanics for any minigame without a mechanic spec for that type.
+**`DICE` is resolved** (first concrete minigame mechanic): roll two six-sided dice against a player-chosen wager. An even sum wins and pays out 2x the wager; an odd sum loses and the wager is deducted. No skill or difficulty scaling — pure chance, transparent odds (a coin flip's worth of even/odd across the 2–12 range). Wager range, stepping, and the click-to-throw interaction are specified in `web-implementation.md`. Chosen for being simple, fully testable, and legible to the player at a glance — a deliberately minimal first mechanic, not a template every future minigame must follow.
+
+**Open design gap — not yet defined for the remaining three types:** the actual resolution mechanic, difficulty model, and win condition for `DUEL`, `LOCKPICKING`, and `FISHING`. Only the *contract* (launch with config, resolve to success/failure, dispatch consequence commands) is currently specified for them, in `web-implementation.md`. Do not implement gameplay mechanics for any of these three without a mechanic spec first.
 
 ## 10. Asset Principle
 
@@ -78,11 +82,13 @@ Player progress must be persistable across sessions, and portable as an exportab
 
 ## Open Design Gaps — Must Be Resolved Before Implementing Beyond the Technical Scaffold
 
-1. Minigame resolution mechanics (all four types) — formulas, difficulty scaling, win conditions. Once these are defined, `MinigameLauncherPayload.config` (currently `Record<string, unknown>` as an untyped placeholder — see `web-implementation.md` §4) should become a discriminated union keyed off `type` — `DuelConfig | LockpickingConfig | FishingConfig | DiceConfig` — instead of staying a loose record.
+1. Minigame resolution mechanics — formulas, difficulty scaling, win conditions — for `DUEL`, `LOCKPICKING`, and `FISHING` (`DICE` is now resolved, see §9). Once all four are defined, `MinigameLauncherPayload.config` (currently `Record<string, unknown>` as an untyped placeholder — see `web-implementation.md` §4) should become a discriminated union keyed off `type` — `DuelConfig | LockpickingConfig | FishingConfig | DiceConfig` — instead of staying a loose record.
 2. Reputation tiers and their gameplay effects.
 3. Economy balance — prices, rewards, costs for actions and goods.
 4. Endeavor content beyond the single starter slice (`endeavor_the_missing_broadsheet`) — its actual phase-by-phase design.
 5. Weather has no update mechanism. `worldClock.weather` (`web-implementation.md` §4) is set once at initialization and nothing — no command, no automatic rotation — ever changes it. Deferred until a narrative or minigame system actually needs it (e.g. a `DUEL` affected by rain, an Endeavor phase gated on `STORM`).
-6. Dialogue branching/variation. `Actor.initialDialogue` is a single static string with no mechanism to vary based on game state (endeavor phase, unlocked clues, reputation). The state to drive this already exists (`activeEndeavors`, `unlockedClues`, `reputation`) — only the mechanism connecting dialogue content to that state is undefined. Needs its own spec before implementing beyond one static line per Actor.
+6. Dialogue branching/variation. `Actor.initialDialogue` is a single static string with no mechanism to vary based on game state (endeavor phase, unlocked clues, reputation). The state to drive this already exists (`activeEndeavors`, `unlockedClues`, `reputation`) — only the mechanism connecting dialogue content to that state is undefined. Needs its own spec before implementing beyond one static line per Actor. (Mara Venn's reputation-gated second line, §7, is one hand-authored instance of this, not the general mechanism.)
+7. No anti-grinding/cooldown on repeated Actor conversations. Talking to Mara Venn repeatedly grants +5 reputation every time with no cooldown or diminishing returns, so reputation can be farmed instantly by repeat-clicking. Intentional for this phase — not a bug — but a real gap: any future reputation-gated content needs a decision on whether repeatable conversations should be capped, cooled down, or made one-time.
+8. Dice minigame interaction is click-to-throw, not press-and-hold. A press-and-hold "charge" mechanic (wager or outcome influenced by hold duration) was considered and explicitly deferred as future polish — the current interaction is a single click/tap on "Throw" that resolves immediately. Not a design gap requiring a spec before proceeding, just noted so it isn't mistaken for an oversight.
 
 None of these should be invented by an implementer (human or AI) filling a gap. Each needs its own short spec, added to this file or a new `docs/` file, before code implementing it is written.

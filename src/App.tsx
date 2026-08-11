@@ -1,8 +1,10 @@
 import { useState } from "react";
 import { usePlayerStore } from "./engine/store/playerStore";
+import { currenciesToBronzeEquivalent } from "./engine/store/commands";
+import { clampWager } from "./engine/minigames/dice";
 import { WorldClockHud } from "./engine/components/WorldClockHud";
 import { WorldNavigationView } from "./engine/components/WorldNavigationView";
-import { NodeInteractionCanvas } from "./engine/components/NodeInteractionCanvas";
+import { NodeInteractionCanvas, type NodeInteractionAction } from "./engine/components/NodeInteractionCanvas";
 import { ManagementDrawer } from "./engine/components/ManagementDrawer";
 import { MinigameOverlay } from "./engine/components/MinigameOverlay";
 
@@ -15,14 +17,115 @@ import endeavor from "./content/endeavors/endeavor_the_missing_broadsheet.json";
 const pois = [poi];
 const actors = [actor];
 
+const MARA_ID = "actor_mara_venn";
+const ENDEAVOR_ID = "endeavor_the_missing_broadsheet";
+const REPUTATION_THRESHOLD_FOR_LEAD = 10;
+const MARA_LEAD_DIALOGUE =
+  "There's a name — Corvin Thale, runs the numbers out of a warehouse near the Salt Quay. He's the one who paid to keep that press quiet. Careful how you go at him.";
+
 function App() {
   const currentLocation = usePlayerStore((state) => state.currentLocation);
+  const currencies = usePlayerStore((state) => state.currencies);
+  const reputation = usePlayerStore((state) => state.reputation);
+  const activeEndeavors = usePlayerStore((state) => state.activeEndeavors);
   const dispatchCommand = usePlayerStore((state) => state.dispatchCommand);
   const [isDrawerOpen, setDrawerOpen] = useState(false);
   const [selectedActorId, setSelectedActorId] = useState<string | null>(null);
 
   const currentPoi = pois.find((p) => p.id === currentLocation.poiId);
-  const selectedActor = actors.find((a) => a.id === selectedActorId) ?? null;
+
+  const maraReputation = reputation.actors[MARA_ID] ?? 0;
+  const maraDialogue = maraReputation >= REPUTATION_THRESHOLD_FOR_LEAD ? MARA_LEAD_DIALOGUE : actor.initialDialogue;
+
+  const selectedActorRaw = actors.find((a) => a.id === selectedActorId) ?? null;
+  const selectedActor = selectedActorRaw
+    ? {
+        id: selectedActorRaw.id,
+        name: selectedActorRaw.name,
+        title: selectedActorRaw.title,
+        initialDialogue: selectedActorRaw.id === MARA_ID ? maraDialogue : selectedActorRaw.initialDialogue,
+      }
+    : null;
+
+  const handleSelectActor = (actorId: string) => {
+    setSelectedActorId(actorId);
+    if (actorId !== MARA_ID) return;
+
+    dispatchCommand({
+      type: "COMMAND_ADJUST_REPUTATION",
+      payload: { targetType: "actor", targetId: MARA_ID, amount: 5 },
+    });
+
+    const afterReputationBump = usePlayerStore.getState();
+    const hasStartedEndeavor = Boolean(afterReputationBump.activeEndeavors[ENDEAVOR_ID]);
+
+    if (!hasStartedEndeavor) {
+      dispatchCommand({
+        type: "COMMAND_START_ENDEAVOR",
+        payload: { endeavorId: ENDEAVOR_ID, initialPhaseId: "phase_ask_around" },
+      });
+    }
+
+    const updatedReputation = afterReputationBump.reputation.actors[MARA_ID] ?? 0;
+    const currentPhase = afterReputationBump.activeEndeavors[ENDEAVOR_ID]?.currentPhaseId ?? "phase_ask_around";
+
+    if (updatedReputation >= REPUTATION_THRESHOLD_FOR_LEAD && currentPhase === "phase_ask_around") {
+      dispatchCommand({
+        type: "COMMAND_ADVANCE_ENDEAVOR_PHASE",
+        payload: {
+          endeavorId: ENDEAVOR_ID,
+          nextPhaseId: "phase_confront_the_buyer",
+          unlocksNodesOnComplete: [],
+        },
+      });
+    }
+  };
+
+  function buildPoiActions(activePoi: (typeof pois)[number]): NodeInteractionAction[] {
+    const actions: NodeInteractionAction[] = [];
+
+    if (activePoi.id === "poi_crooked_hour_tavern") {
+      actions.push({
+        id: "action_gamble",
+        label: "Gamble",
+        onClick: () => {
+          const wager = clampWager(20, currenciesToBronzeEquivalent(currencies));
+          dispatchCommand({
+            type: "COMMAND_START_MINIGAME",
+            payload: {
+              type: "DICE",
+              sourceId: activePoi.id,
+              config: { wager },
+              onSuccessCommands: [
+                { type: "COMMAND_ADJUST_CURRENCY", payload: { denomination: "bronze", amount: wager } },
+              ],
+              onFailureCommands: [
+                { type: "COMMAND_ADJUST_CURRENCY", payload: { denomination: "bronze", amount: -wager } },
+              ],
+            },
+          });
+        },
+      });
+
+      const endeavorState = activeEndeavors[ENDEAVOR_ID];
+      if (endeavorState?.currentPhaseId === "phase_confront_the_buyer") {
+        const canAfford = currenciesToBronzeEquivalent(currencies) >= 20;
+        actions.push({
+          id: "action_pay_off_buyer",
+          label: canAfford ? "Pay off the buyer (1 silver)" : "Pay off the buyer (need 1 silver)",
+          disabled: !canAfford,
+          onClick: () => {
+            dispatchCommand({
+              type: "COMMAND_ADJUST_CURRENCY",
+              payload: { denomination: "silver", amount: -1 },
+            });
+          },
+        });
+      }
+    }
+
+    return actions;
+  }
 
   return (
     <div className="min-h-screen bg-neutral-950 pt-14 text-indigo-100">
@@ -45,7 +148,8 @@ function App() {
             .filter((a) => currentPoi.actorIds.includes(a.id))
             .map((a) => ({ id: a.id, name: a.name, title: a.title }))}
           selectedActor={selectedActor}
-          onSelectActor={setSelectedActorId}
+          actions={buildPoiActions(currentPoi)}
+          onSelectActor={handleSelectActor}
           onLeave={() => {
             setSelectedActorId(null);
             dispatchCommand({

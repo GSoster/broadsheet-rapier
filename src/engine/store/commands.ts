@@ -33,12 +33,18 @@ function advanceShiftsBy(state: PlayerState, count: number): PlayerState {
   return next;
 }
 
-function normalizeCurrencies(currencies: PlayerState["currencies"]): PlayerState["currencies"] {
-  let { gold, silver, bronze } = currencies;
-  silver += Math.floor(bronze / 20);
-  bronze = bronze % 20;
-  gold += Math.floor(silver / 20);
-  silver = silver % 20;
+export function currenciesToBronzeEquivalent(currencies: PlayerState["currencies"]): number {
+  return currencies.gold * 400 + currencies.silver * 20 + currencies.bronze;
+}
+
+function bronzeEquivalentToCurrencies(totalBronze: number): PlayerState["currencies"] {
+  // Hard floor: total value can never go negative — this is the store-level
+  // guarantee, not just a UI-layer convention (a negative total clamps to 0).
+  const clamped = Math.max(0, totalBronze);
+  const gold = Math.floor(clamped / 400);
+  const remainder = clamped % 400;
+  const silver = Math.floor(remainder / 20);
+  const bronze = remainder % 20;
   return { gold, silver, bronze };
 }
 
@@ -87,8 +93,9 @@ const handlers: Record<DispatchableCommandType, CommandHandler> = {
       denomination: "gold" | "silver" | "bronze";
       amount: number;
     };
-    const currencies = { ...state.currencies, [denomination]: state.currencies[denomination] + amount };
-    return { ...state, currencies: normalizeCurrencies(currencies) };
+    const denominationValueInBronze = denomination === "gold" ? 400 : denomination === "silver" ? 20 : 1;
+    const nextTotal = currenciesToBronzeEquivalent(state.currencies) + amount * denominationValueInBronze;
+    return { ...state, currencies: bronzeEquivalentToCurrencies(nextTotal) };
   },
 
   COMMAND_ADJUST_REPUTATION: (state, payload) => {
@@ -181,6 +188,13 @@ const handlers: Record<DispatchableCommandType, CommandHandler> = {
     }
     return next;
   },
+
+  // Leaves/cancels the active minigame with no consequence — neither
+  // onSuccessCommands nor onFailureCommands run. Distinct from
+  // COMMAND_RESOLVE_MINIGAME, which always applies one side or the other;
+  // this is for backing out before playing (e.g. a wager the player can't
+  // or no longer wants to afford), not a win/lose outcome.
+  COMMAND_CANCEL_MINIGAME: (state) => ({ ...state, activeMinigame: null }),
 };
 
 export function applyCommand(state: PlayerState, command: StateCommand): PlayerState {

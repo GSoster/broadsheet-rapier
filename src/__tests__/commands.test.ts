@@ -65,6 +65,54 @@ describe("COMMAND_ADJUST_CURRENCY", () => {
     });
     expect(next.currencies).toEqual({ gold: 1, silver: 0, bronze: 0 });
   });
+
+  it("borrows down from silver when a bronze loss exceeds the bronze on hand", () => {
+    const state = makeState({ currencies: { gold: 0, silver: 1, bronze: 0 } });
+    const next = applyCommand(state, {
+      type: "COMMAND_ADJUST_CURRENCY",
+      payload: { denomination: "bronze", amount: -5 },
+    });
+    // 20 bronze-equivalent - 5 = 15 -> breaks the silver down into bronze
+    expect(next.currencies).toEqual({ gold: 0, silver: 0, bronze: 15 });
+  });
+
+  it("borrows down from gold into silver on a moderate loss", () => {
+    const state = makeState({ currencies: { gold: 1, silver: 0, bronze: 0 } });
+    const next = applyCommand(state, {
+      type: "COMMAND_ADJUST_CURRENCY",
+      payload: { denomination: "bronze", amount: -10 },
+    });
+    // 400 bronze-equivalent - 10 = 390 -> 0 gold, 19 silver, 10 bronze
+    expect(next.currencies).toEqual({ gold: 0, silver: 19, bronze: 10 });
+  });
+
+  it("borrows down from gold all the way through silver into bronze on a large loss", () => {
+    const state = makeState({ currencies: { gold: 1, silver: 0, bronze: 0 } });
+    const next = applyCommand(state, {
+      type: "COMMAND_ADJUST_CURRENCY",
+      payload: { denomination: "bronze", amount: -395 },
+    });
+    // 400 bronze-equivalent - 395 = 5 -> 0 gold, 0 silver (fully broken down), 5 bronze
+    expect(next.currencies).toEqual({ gold: 0, silver: 0, bronze: 5 });
+  });
+
+  it("clamps at zero rather than going negative when a loss exceeds total holdings", () => {
+    const state = makeState({ currencies: { gold: 0, silver: 0, bronze: 10 } });
+    const next = applyCommand(state, {
+      type: "COMMAND_ADJUST_CURRENCY",
+      payload: { denomination: "bronze", amount: -50 },
+    });
+    expect(next.currencies).toEqual({ gold: 0, silver: 0, bronze: 0 });
+  });
+
+  it("clamps at zero even when the loss is denominated in gold/silver directly", () => {
+    const state = makeState({ currencies: { gold: 0, silver: 2, bronze: 5 } });
+    const next = applyCommand(state, {
+      type: "COMMAND_ADJUST_CURRENCY",
+      payload: { denomination: "silver", amount: -10 },
+    });
+    expect(next.currencies).toEqual({ gold: 0, silver: 0, bronze: 0 });
+  });
 });
 
 describe("COMMAND_ADJUST_REPUTATION", () => {

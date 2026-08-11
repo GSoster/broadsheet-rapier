@@ -15,6 +15,7 @@ export type CommandType =
   | "COMMAND_ADVANCE_ENDEAVOR_PHASE"
   | "COMMAND_START_MINIGAME"
   | "COMMAND_RESOLVE_MINIGAME"
+  | "COMMAND_CANCEL_MINIGAME"
   | "COMMAND_NEXT_DAY";
 
 export interface StateCommand<T = Record<string, unknown>> {
@@ -83,6 +84,7 @@ const StateCommandSchema: z.ZodType<StateCommand> = z.object({
     "COMMAND_ADVANCE_ENDEAVOR_PHASE",
     "COMMAND_START_MINIGAME",
     "COMMAND_RESOLVE_MINIGAME",
+    "COMMAND_CANCEL_MINIGAME",
     "COMMAND_NEXT_DAY",
   ]),
   payload: z.record(z.string(), z.unknown()),

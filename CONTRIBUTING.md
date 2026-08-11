@@ -37,13 +37,13 @@ test(schemas): add POI schema validation fixtures
 - `src/engine/` stays generic and decoupled from narrative content — no hardcoded lore, IDs, or strings that belong in `src/content/`.
 - Command handlers are pure where possible: given the same state and command, produce the same result.
 - No dead code, no commented-out blocks left in place — delete or don't commit it.
-- Every schema in `src/content/schemas/` needs at least one valid and one invalid fixture in `src/__tests__/`.
+- Every schema in `src/content/schemas/` needs at least one valid and one invalid fixture in `src/__tests__/schemas.test.ts` (hand-crafted edge cases for the schema's *shape*). Separately, `src/__tests__/content-integrity.test.ts` globs every real file under `src/content/` and validates it against its schema automatically — new content files need no test changes to be covered by it, only `schemas.test.ts` needs a new fixture when a new schema itself is added.
 - **Definition of Done includes tests alongside the logic that needs them, in the same phase — not deferred to a later testing phase.** This applies to `src/engine/{store,minigames}` logic (Vitest, `node` environment) and to `src/engine/components/` (Vitest + `@testing-library/react` + `jsdom`, structure/behavior tests — e.g. "renders X from these props," "clicking Y fires this callback"). A full visual/rendering pass (Playwright, a real browser, screenshots) is *not* required every phase — reserve it for deliberate UI milestones via the `ui-visual-check` skill, not routine per-phase verification.
 - Run `npm run test` and `npx tsc --noEmit` before considering any phase done. Both must pass clean.
 
 ## Content Authoring
 
-- All JSON under `src/content/` must validate against its Zod schema before being committed.
+- All JSON under `src/content/` must validate against its Zod schema before being committed. `npm run test` enforces this automatically via `content-integrity.test.ts` — a new content file that fails schema validation fails the suite, no separate step needed.
 - Tone and mechanics follow the priority hierarchy in `docs/narrative-inspirations.md` — Section 1 for character/dialogue/quests, Section 2 for atmosphere, Section 3 for UI/interaction only (never narrative tone).
 - Era/tech/magic constraints in `docs/world-lore.md` are strict, not suggestions (no anachronistic tech, no high-fantasy combat magic).
 
@@ -64,5 +64,10 @@ A phase is not complete until all five are true:
    unless the user explicitly waives this for a given phase.
 5. Every judgment call or ambiguity is listed explicitly, never
    silently resolved.
+6. `CHANGELOG.md`'s `[Unreleased]` section has an entry for what this
+   phase actually added/changed/fixed, in Keep a Changelog terms —
+   not deferred to "later." A phase that touches user-visible behavior
+   (a new command, a new UI element, a bug fix) with no changelog
+   entry is not done.
 
 Do not proceed to the next phase until the user explicitly approves.

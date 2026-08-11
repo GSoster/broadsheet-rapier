@@ -6,7 +6,10 @@ import { applyCommand } from "./commands";
 import { createEvent, type StateChangeEvent } from "./events";
 
 export const initialPlayerState: PlayerState = {
-  currencies: { gold: 0, silver: 0, bronze: 0 },
+  // A small starting purse (50 bronze-equivalent) so the dice minigame is
+  // reachable from a fresh save — see docs/decisions.md. Not a balanced
+  // economy number; economy balance remains an open design gap.
+  currencies: { gold: 0, silver: 2, bronze: 10 },
   worldClock: { shift: "MORNING", day: 1, season: "SPRING", weather: "CLEAR" },
   currentLocation: { settlementId: "", districtId: "" },
   reputation: { factions: {}, actors: {} },

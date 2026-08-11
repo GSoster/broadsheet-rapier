@@ -60,3 +60,29 @@ describe("COMMAND_RESOLVE_MINIGAME", () => {
     expect(next).toBe(state);
   });
 });
+
+describe("COMMAND_CANCEL_MINIGAME", () => {
+  it("clears activeMinigame without running onSuccessCommands or onFailureCommands", () => {
+    const minigame = makeMinigame({
+      onSuccessCommands: [{ type: "COMMAND_UNLOCK_NODE", payload: { nodeId: "poi_crooked_hour_tavern" } }],
+      onFailureCommands: [
+        {
+          type: "COMMAND_ADJUST_REPUTATION",
+          payload: { targetType: "actor", targetId: "actor_mara_venn", amount: -10 },
+        },
+      ],
+    });
+    const state = makeState({ activeMinigame: minigame });
+    const next = applyCommand(state, { type: "COMMAND_CANCEL_MINIGAME", payload: {} });
+    expect(next.activeMinigame).toBeNull();
+    expect(next.unlockedNodes.poi_crooked_hour_tavern).toBeUndefined();
+    expect(next.reputation.actors.actor_mara_venn).toBeUndefined();
+  });
+
+  it("leaves unrelated state untouched when there was no active minigame", () => {
+    const state = makeState({ activeMinigame: null, currencies: { gold: 0, silver: 2, bronze: 10 } });
+    const next = applyCommand(state, { type: "COMMAND_CANCEL_MINIGAME", payload: {} });
+    expect(next.activeMinigame).toBeNull();
+    expect(next.currencies).toEqual({ gold: 0, silver: 2, bronze: 10 });
+  });
+});
