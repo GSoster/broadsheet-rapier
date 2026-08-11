@@ -82,7 +82,32 @@ This file defines the thematic, atmospheric, narrative, and interaction-design p
 
 ---
 
-## SECTION 4: SENSORY PALETTE FOR GENERATION
+## SECTION 4: GAMEPLAY SYSTEMS & PROGRESSION
+*(Reference for future design of repeatable activities, quest structure, and progression pacing — not yet adopted into concrete mechanics. See game-design-spec.md's open design gaps.)*
+
+### 1. Fallen London (Failbetter Games)
+- **Systems:** Two parallel content types — persistent, repeatable Storylets gated by location and by numeric "Quality" thresholds, and a hand of randomly-drawn Opportunity Cards for one-shot side content. Qualities aren't only positive/growable — negative "blight" qualities (e.g. Nightmares, Wounds, Suspicion, Scandal) accumulate as consequences, making the core dynamic about balancing qualities against each other, not just maxing them out. Districts each carry a dominant flavor reflected directly in which storylets appear there.
+- **Design principles worth adapting** (from practitioner discussion on prototyping a similar system, intfiction.org):
+  1. Separate the mechanical/reward choice from the narrative/roleplay choice, so reward-chasing doesn't corrupt what the story means.
+  2. Lock character-defining qualities behind real story moments, not continuous grinding.
+  3. When the player repeats an activity heavily, let the narrative acknowledge it — turn frequency itself into a quality/hook.
+  4. Avoid "everything trends toward maxed" — prefer horizontal trade-offs (a strength costs something elsewhere) over pure vertical stat growth.
+  5. Signal that a decision matters before it's made, without revealing its exact mechanical payoff.
+  6. Frame big grinds as discrete, committed events rather than raw repetition.
+  7. Let past choices resurface and get acknowledged later, even with no further mechanical effect.
+- **Relevance:** closest existing parallel to our POI-scoped repeatable actions (e.g. gambling at the tavern) versus unique branching Endeavors. Principles 1, 3, and 6 in particular apply directly to the open systemic-progression gap below.
+
+### 2. OGame (Gameforge)
+- **Systems:** Real-time resource production (multiple resource types) feeding permanent building and research-tree upgrades, interacted with entirely through simple menu/timer screens — no direct manipulation or reflex skill involved.
+- **Relevance:** a model for simple, clickable progression systems if the game ever wants a resource/upgrade loop beyond currency and reputation.
+
+### 3. BiteFight (Gameforge)
+- **Systems:** Alongside PvP and story quests, a separate timed Hunt action sends the player out for guaranteed rewards regardless of level or quest-gating, plus a passive wage-job option — both exist specifically so a player is never fully blocked by quest, level, or item requirements.
+- **Relevance:** a direct model for avoiding soft-locks — an always-available fallback activity (our dice gambling loop is a first, unplanned instance of this pattern) alongside main quest content.
+
+---
+
+## SECTION 5: SENSORY PALETTE FOR GENERATION
 
 - **Visuals:** Parchment yellow, velvet indigo, tarnished brass, wet slate gray, dried crimson, pitch black. Tallow candles, swinging iron lanterns, pitch-soaked torches.
 - **Sounds:** Hooves on wet cobblestones, midnight cathedral bells, creaking ship timber, distant rapier clashes, tavern dice, broadsheet sellers.
