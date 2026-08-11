@@ -10,6 +10,8 @@ React (TypeScript, strict) · Vite · Tailwind CSS v4 · Zustand · Zod · Frame
 
 ## Development
 
+Requires Node 24 (see `.nvmrc` — run `nvm use` if you use nvm).
+
 ```bash
 npm install
 npm run dev

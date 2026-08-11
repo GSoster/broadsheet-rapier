@@ -77,3 +77,21 @@ zero behavioral test coverage — only type-checking. Deferring all
 tests to Phase 5 meant real logic bugs could sit undetected for
 multiple approval cycles. Definition of Done now requires tests
 alongside any new logic in the same phase it's introduced.
+
+**CI Node version bumped from 20 to 24, matching local.**
+jsdom 28's bundled undici (8.0.3+) requires `node:worker_threads.markAsUncloneable`,
+added in Node v21.0.0. CI pinned to Node 20 caused all 6 component test files to
+fail at worker startup (not a test failure — they never ran). Local Node 24 has
+the API and was unaffected, which is why this wasn't caught until CI ran it.
+Aligning versions everywhere going forward avoids this class of "works locally,
+fails in CI" gap.
+
+**Node version centralized into `.nvmrc`, rather than just fixing the CI number.**
+Bumping `ci.yml`'s hardcoded `node-version: '24'` (above) fixed the immediate
+failure but left two separately maintained copies of the same fact — nothing
+stopping them from silently drifting apart again the next time either one
+changes. Added `.nvmrc` (`24`) as the single source of truth: `ci.yml` now
+reads `node-version-file: '.nvmrc'` instead of a hardcoded value, and
+`package.json`'s `"engines": { "node": ">=24" }` makes `npm install` itself
+warn locally on a mismatch. README points at `.nvmrc` so a human setting up
+the repo sees the same requirement, not a fourth copy of the number.
