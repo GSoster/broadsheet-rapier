@@ -8,5 +8,6 @@ export const PoiSchema = BaseNodeFieldsSchema.extend({
   costShifts: z.number().default(0),
   availableShifts: z.array(ShiftSchema),
   actorIds: z.array(z.string()),
+  entrySoundAsset: z.string().optional(),
 });
 export type Poi = z.infer<typeof PoiSchema>;

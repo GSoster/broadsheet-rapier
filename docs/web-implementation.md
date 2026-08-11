@@ -123,11 +123,12 @@ src/
     types/index.ts
     store/{playerStore.ts, commands.ts, events.ts}
     minigames/{dice.ts, index.ts}
+    audio/{playSound.ts}
     components/{WorldClockHud.tsx, WorldNavigationView.tsx, NodeInteractionCanvas.tsx, ManagementDrawer.tsx, AssetFallback.tsx, MinigameOverlay.tsx, minigames/DiceGame.tsx}
   content/
     schemas/{shared.ts, settlement.schema.ts, district.schema.ts, poi.schema.ts, actor.schema.ts, faction.schema.ts, endeavor.schema.ts}
     settlements/ districts/ pois/ actors/ factions/ endeavors/
-  __tests__/{schemas.test.ts, content-integrity.test.ts, playerStore.test.ts, persistence.test.ts, commands.test.ts, minigames.test.ts, dice.test.ts, components/, setup/}
+  __tests__/{schemas.test.ts, content-integrity.test.ts, playerStore.test.ts, persistence.test.ts, commands.test.ts, minigames.test.ts, dice.test.ts, playSound.test.ts, components/, setup/}
 public/
   content/assets/{images/districts, images/pois, images/actors, audio}/
 ```
@@ -142,6 +143,15 @@ public/
 - Filenames: `snake_case` (e.g. `lantern_ward_bg.webp`).
 - Paths inside content JSON are relative/absolute web paths resolved dynamically by rendering components — never imported directly into engine code.
 - Missing/failed asset load renders a placeholder: bright purple border (`border-purple-600 bg-purple-950/80`), warning icon, text `MISSING: [asset_path]`. Implemented once as a shared `AssetFallback` component wrapping every image/audio reference — never reimplemented ad hoc per component.
+
+### Audio Handling (implemented)
+
+- Shared fail-silent player: `src/engine/audio/playSound.ts`. Takes an asset path and an injectable `{ audioFactory? }` option (defaulting to `(src) => new Audio(src)`), attempts playback, and swallows all three failure shapes — the factory throwing synchronously, `.play()` throwing synchronously, and `.play()` returning a rejected promise — without ever throwing, blocking, or interrupting gameplay. At most logs a `console.warn` in dev (`import.meta.env.DEV`).
+- **Deliberate contrast with the visual `AssetFallback` rule above.** A missing/failed *image* must be loudly, visibly flagged (purple `MISSING` placeholder) because content authors need to catch it during development. A missing/failed *sound* must degrade silently — SFX are non-blocking and non-critical to gameplay, and an audible glitch or a thrown error would be a worse player experience than simply no sound. Same underlying "missing asset" problem, opposite resolution, because the two asset kinds have different failure costs. `game-design-spec.md` §10 states this as a domain-level rule, not just an implementation detail.
+- Two independent trigger mechanisms, matching how each sound is owned:
+  - **Logic-driven**: dice win/lose in `DiceGame.tsx` (`WIN_SOUND_ASSET`/`LOSE_SOUND_ASSET` constants, fired from `throwDice` right after the roll result is computed) — component-owned, tied to a game-logic outcome (`result.isVictory`), not content data. Not schema-driven. Takes an injectable `playSound?: (src: string) => void` prop (defaulting to the real utility), mirroring the existing injectable `random` prop, for deterministic tests.
+  - **Content-driven**: optional `entrySoundAsset` on the District and POI content schemas (same optionality pattern as `imageAsset`), played via `playSound` in `App.tsx` — for POI, in `onSelectPoi` (a real "player chose to enter this POI" moment); for District, in a mount-only `useEffect` against the currently-resolved district, **not** in `onLeave` (which dispatches `COMMAND_MOVE_TO_DISTRICT` today but only means "left a POI back into the same district" — there's no real district-to-district travel yet, so wiring the sound there would misrepresent "leaving a building" as "arriving in a district"). Both call sites are wrapped in small named functions (`triggerPoiEntryEffects`, `triggerDistrictEntryEffects`) rather than inline checks, so a second entry-effect type wouldn't mean scattered inline logic — see `game-design-spec.md`'s systemic-progression gap for why this isn't generalized further yet.
+- No music or looping ambience in this phase — every sound triggered by this system is a one-shot SFX tied to a specific moment.
 
 ## 9. Minigame Runner Architecture
 

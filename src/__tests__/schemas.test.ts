@@ -34,6 +34,17 @@ describe("DistrictSchema", () => {
     const invalid = { ...validDistrict, isUnlocked: "yes" };
     expect(DistrictSchema.safeParse(invalid).success).toBe(false);
   });
+
+  it("accepts a district without entrySoundAsset", () => {
+    const withoutSound: Record<string, unknown> = { ...validDistrict };
+    delete withoutSound.entrySoundAsset;
+    expect(DistrictSchema.safeParse(withoutSound).success).toBe(true);
+  });
+
+  it("accepts a district with entrySoundAsset", () => {
+    const withSound = { ...validDistrict, entrySoundAsset: "/content/assets/audio/lantern_ward_entry.mp3" };
+    expect(DistrictSchema.safeParse(withSound).success).toBe(true);
+  });
 });
 
 describe("PoiSchema", () => {
@@ -44,6 +55,17 @@ describe("PoiSchema", () => {
   it("rejects a poi with an invalid Shift value", () => {
     const invalid = { ...validPoi, availableShifts: ["EVENING", "MIDNIGHT"] };
     expect(PoiSchema.safeParse(invalid).success).toBe(false);
+  });
+
+  it("accepts a poi without entrySoundAsset", () => {
+    const withoutSound: Record<string, unknown> = { ...validPoi };
+    delete withoutSound.entrySoundAsset;
+    expect(PoiSchema.safeParse(withoutSound).success).toBe(true);
+  });
+
+  it("accepts a poi with entrySoundAsset", () => {
+    const withSound = { ...validPoi, entrySoundAsset: "/content/assets/audio/crooked_hour_tavern_entry.mp3" };
+    expect(PoiSchema.safeParse(withSound).success).toBe(true);
   });
 });
 

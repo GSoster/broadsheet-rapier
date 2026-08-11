@@ -4,11 +4,17 @@ import { usePlayerStore } from "../../store/playerStore";
 import { currenciesToBronzeEquivalent } from "../../store/commands";
 import { minigameResolvers } from "../../minigames";
 import { clampWager, maxAffordableWager, MIN_WAGER, WAGER_STEP, type DiceRollResult } from "../../minigames/dice";
+import { playSound } from "../../audio/playSound";
+
+const WIN_SOUND_ASSET = "/content/assets/audio/dice_win.mp3";
+const LOSE_SOUND_ASSET = "/content/assets/audio/dice_lose.mp3";
 
 export interface DiceGameProps {
   sourceId: string;
   /** Injectable random source for deterministic tests; defaults to Math.random. */
   random?: () => number;
+  /** Injectable sound player for deterministic tests; defaults to the shared playSound utility. */
+  playSound?: (src: string) => void;
 }
 
 const PIP_LAYOUTS: Record<number, Array<[number, number]>> = {
@@ -65,7 +71,7 @@ function Die({ value, rolling }: { value: number | null; rolling: boolean }) {
   );
 }
 
-export function DiceGame({ sourceId, random }: DiceGameProps) {
+export function DiceGame({ sourceId, random, playSound: playSoundProp = playSound }: DiceGameProps) {
   const currencies = usePlayerStore((state) => state.currencies);
   const activeMinigame = usePlayerStore((state) => state.activeMinigame);
   const dispatchCommand = usePlayerStore((state) => state.dispatchCommand);
@@ -116,6 +122,7 @@ export function DiceGame({ sourceId, random }: DiceGameProps) {
     window.setTimeout(() => {
       const result = minigameResolvers.DICE(wager, random);
       setRollResult(result);
+      playSoundProp(result.isVictory ? WIN_SOUND_ASSET : LOSE_SOUND_ASSET);
       setPhase("result");
     }, 700);
   };

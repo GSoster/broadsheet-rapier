@@ -1,7 +1,8 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { usePlayerStore } from "./engine/store/playerStore";
 import { currenciesToBronzeEquivalent } from "./engine/store/commands";
 import { clampWager } from "./engine/minigames/dice";
+import { playSound } from "./engine/audio/playSound";
 import { WorldClockHud } from "./engine/components/WorldClockHud";
 import { WorldNavigationView } from "./engine/components/WorldNavigationView";
 import { NodeInteractionCanvas, type NodeInteractionAction } from "./engine/components/NodeInteractionCanvas";
@@ -23,6 +24,23 @@ const REPUTATION_THRESHOLD_FOR_LEAD = 10;
 const MARA_LEAD_DIALOGUE =
   "There's a name — Corvin Thale, runs the numbers out of a warehouse near the Salt Quay. He's the one who paid to keep that press quiet. Careful how you go at him.";
 
+// Small named trigger functions rather than inline checks next to the
+// dispatch/mount logic — cheap now, and avoids scattered inline effect
+// checks accumulating in App.tsx if a second entry-effect type is ever
+// added. Deliberately not generalized into an on-enter-effects registry;
+// see game-design-spec.md's systemic-progression gap for why.
+function triggerDistrictEntryEffects(activeDistrict: typeof district): void {
+  if (activeDistrict.entrySoundAsset) {
+    playSound(activeDistrict.entrySoundAsset);
+  }
+}
+
+function triggerPoiEntryEffects(activePoi: (typeof pois)[number]): void {
+  if (activePoi.entrySoundAsset) {
+    playSound(activePoi.entrySoundAsset);
+  }
+}
+
 function App() {
   const currentLocation = usePlayerStore((state) => state.currentLocation);
   const currencies = usePlayerStore((state) => state.currencies);
@@ -31,6 +49,15 @@ function App() {
   const dispatchCommand = usePlayerStore((state) => state.dispatchCommand);
   const [isDrawerOpen, setDrawerOpen] = useState(false);
   const [selectedActorId, setSelectedActorId] = useState<string | null>(null);
+
+  useEffect(() => {
+    triggerDistrictEntryEffects(district);
+    // district is a static top-level import today, so this effect correctly
+    // runs once on mount; once real district-to-district travel exists,
+    // district will need to become reactive and this effect's dependencies
+    // must be revisited, or entry sound will silently stop firing on
+    // district changes.
+  }, []);
 
   const currentPoi = pois.find((p) => p.id === currentLocation.poiId);
 
@@ -165,6 +192,9 @@ function App() {
           pois={pois.map((p) => ({ id: p.id, name: p.name, isUnlocked: p.isUnlocked }))}
           onSelectPoi={(poiId) => {
             const target = pois.find((p) => p.id === poiId);
+            if (target) {
+              triggerPoiEntryEffects(target);
+            }
             dispatchCommand({
               type: "COMMAND_MOVE_TO_POI",
               payload: { poiId, costShifts: target?.costShifts ?? 0 },

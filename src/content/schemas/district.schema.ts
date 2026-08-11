@@ -6,5 +6,6 @@ export const DistrictSchema = BaseNodeFieldsSchema.extend({
   factionInfluence: FactionInfluenceSchema.optional(),
   settlementId: z.string(),
   poiIds: z.array(z.string()),
+  entrySoundAsset: z.string().optional(),
 });
 export type District = z.infer<typeof DistrictSchema>;

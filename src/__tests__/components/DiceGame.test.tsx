@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { DiceGame } from "../../engine/components/minigames/DiceGame";
 import { initialPlayerState, usePlayerStore } from "../../engine/store/playerStore";
@@ -80,5 +80,29 @@ describe("DiceGame", () => {
     // 50 - 20 = 30 bronze-equivalent, normalized: 1 silver + 10 bronze
     expect(usePlayerStore.getState().currencies).toEqual({ gold: 0, silver: 1, bronze: 10 });
     expect(usePlayerStore.getState().activeMinigame).toBeNull();
+  });
+
+  it("plays the win sound on a winning throw", async () => {
+    usePlayerStore.setState({ currencies: { gold: 0, silver: 0, bronze: 50 } });
+    const playSoundSpy = vi.fn();
+    render(
+      <DiceGame sourceId="poi_crooked_hour_tavern" random={stubRandomForDice(2, 2)} playSound={playSoundSpy} />
+    );
+    fireEvent.click(screen.getByText("Throw"));
+    await waitFor(() => expect(screen.getByText("You win 20 bronze!")).toBeInTheDocument());
+    expect(playSoundSpy).toHaveBeenCalledTimes(1);
+    expect(playSoundSpy).toHaveBeenCalledWith(expect.stringContaining("dice_win"));
+  });
+
+  it("plays the lose sound on a losing throw", async () => {
+    usePlayerStore.setState({ currencies: { gold: 0, silver: 0, bronze: 50 } });
+    const playSoundSpy = vi.fn();
+    render(
+      <DiceGame sourceId="poi_crooked_hour_tavern" random={stubRandomForDice(1, 2)} playSound={playSoundSpy} />
+    );
+    fireEvent.click(screen.getByText("Throw"));
+    await waitFor(() => expect(screen.getByText("You lose 20 bronze.")).toBeInTheDocument());
+    expect(playSoundSpy).toHaveBeenCalledTimes(1);
+    expect(playSoundSpy).toHaveBeenCalledWith(expect.stringContaining("dice_lose"));
   });
 });
