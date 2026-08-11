@@ -13,9 +13,16 @@ have to be re-derived and re-typed in prose every time.
 
 ## Steps
 
-1. **Type-check.** Run `npx tsc --noEmit`. Must produce no output. If
-   it errors, fix before continuing — never report a phase done with a
-   red type-check.
+1. **Type-check.** Run `npx tsc -b --noEmit` — **not** bare `npx tsc
+   --noEmit`. The root `tsconfig.json` only has `"references"`, no
+   `"files"`/`"include"`; bare `tsc` silently checks zero files and
+   always "succeeds" without `-b` to follow the references into
+   `tsconfig.app.json`/`tsconfig.node.json`. This was discovered the
+   hard way — every "tsc clean" claimed all session, and every CI
+   "Type check" step, was vacuous until `npm run build` (which uses
+   `tsc -b`) surfaced a real, pre-existing error nothing had caught.
+   Must produce no output. If it errors, fix before continuing — never
+   report a phase done with a red type-check.
 
 2. **Test.** Run `npm run test`. Must show all files/tests passing.
    Per `CONTRIBUTING.md`'s Definition of Done, tests are written
@@ -39,14 +46,31 @@ have to be re-derived and re-typed in prose every time.
      test file's glob patterns still cover any newly-added content
      subfolder.
 
-3. **Confirm scope.** Run `git status --porcelain` and check the
+3. **Reachability check.** For anything with a player-facing entry
+   point (a new action, minigame, UI element), verify it from a
+   genuinely fresh state — use the dev-only Reset Progress button
+   (`ManagementDrawer`) + reload, not hand-editing `localStorage`. Per
+   `docs/feature-workflow.md` Category A: this is manual and has no
+   automated backstop, same enforcement risk as a skipped CHANGELOG
+   entry — it only happens if actually done, so do it, don't just note
+   that it should be done.
+
+4. **Consistency sweep.** Grep for other references to any entity/value
+   this phase changed (a renamed field, a corrected faction, a changed
+   title) — `content-integrity.test.ts` catches *broken references*
+   automatically, but not attribute-level drift (a stale title after a
+   related field changes). Per `docs/feature-workflow.md` Category C:
+   also manual, also unenforced by anything automatic — same discipline
+   as the reachability check above.
+
+5. **Confirm scope.** Run `git status --porcelain` and check the
    changed files match what the phase actually called for — nothing
    under `src/engine/` touched when the task was "add narrative
    content," no unrelated files dragged in. If something unexpected
    shows up, explain why before moving on.
 
-4. **Check CI coverage.** Read `.github/workflows/ci.yml`. It runs
-   `npx tsc --noEmit`, `npm run lint`, and `npm run test` generically
+6. **Check CI coverage.** Read `.github/workflows/ci.yml`. It runs
+   `npx tsc -b --noEmit`, `npm run lint`, and `npm run test` generically
    — new test files and new eslint rules are automatically covered by
    those three, no workflow edit needed. But if this phase added a
    *new* verification command (a new `npm run` script, a separate
@@ -56,23 +80,26 @@ have to be re-derived and re-typed in prose every time.
    report — don't leave a check that only runs when a human remembers
    to run it locally.
 
-5. **Update `CHANGELOG.md`.** Add an entry under `[Unreleased]` (Keep
+7. **Update `CHANGELOG.md`.** Add an entry under `[Unreleased]` (Keep
    a Changelog style: Added/Changed/Fixed) for what this phase
    actually did, if it touched user-visible behavior — a new command,
    a UI element, a bug fix. Don't defer this to "later" — there's no
    later in a project without dated releases yet; entries only ever
    get written now or never.
 
-6. **Report judgment calls.** Per `CLAUDE.md` §1 ("do not invent
+8. **Report judgment calls.** Per `CLAUDE.md` §1 ("do not invent
    domain rules — stop and flag the gap"), anywhere a spec was
    ambiguous, silent, or self-contradictory and a decision had to be
    made to keep moving, list it explicitly in the response — don't let
    it pass silently. If the decision is non-obvious enough to matter
    for future work, it likely also belongs in `docs/decisions.md`
    (see that file's existing entries for the expected shape: the
-   decision, then *why*).
+   decision, then *why*). For anything feature-shaped (new engine
+   capability or new content), check whether it should have had a
+   `docs/features/` spec per `docs/feature-workflow.md` — retroactively
+   backfilling one is better than never having one.
 
-7. **Propose a commit message**, following `CONTRIBUTING.md`'s
+9. **Propose a commit message**, following `CONTRIBUTING.md`'s
    Conventional Commits format (`type(scope): summary`). Propose only
    — don't commit unless explicitly asked to.
 

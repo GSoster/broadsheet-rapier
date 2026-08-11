@@ -7,6 +7,7 @@ This is a solo, closed-source project (see `LICENSE`). This file exists to keep 
 1. Read `CLAUDE.md` and everything under `docs/`.
 2. Check `docs/execution-plan.md` for the current phase. Work in phase order — don't start a later phase before the current one is reviewed.
 3. If a task isn't covered by the docs, stop and ask. Don't assume or invent an answer.
+4. For anything feature-shaped (new engine capability, new minigame, new content/adventure) beyond a small fix, follow `docs/feature-workflow.md` — draft a spec under `docs/features/` before implementing, per that doc's process.
 
 ## Commit Conventions
 
@@ -39,7 +40,7 @@ test(schemas): add POI schema validation fixtures
 - No dead code, no commented-out blocks left in place — delete or don't commit it.
 - Every schema in `src/content/schemas/` needs at least one valid and one invalid fixture in `src/__tests__/schemas.test.ts` (hand-crafted edge cases for the schema's *shape*). Separately, `src/__tests__/content-integrity.test.ts` globs every real file under `src/content/` and validates it against its schema automatically — new content files need no test changes to be covered by it, only `schemas.test.ts` needs a new fixture when a new schema itself is added.
 - **Definition of Done includes tests alongside the logic that needs them, in the same phase — not deferred to a later testing phase.** This applies to `src/engine/{store,minigames}` logic (Vitest, `node` environment) and to `src/engine/components/` (Vitest + `@testing-library/react` + `jsdom`, structure/behavior tests — e.g. "renders X from these props," "clicking Y fires this callback"). A full visual/rendering pass (Playwright, a real browser, screenshots) is *not* required every phase — reserve it for deliberate UI milestones via the `ui-visual-check` skill, not routine per-phase verification.
-- Run `npm run test` and `npx tsc --noEmit` before considering any phase done. Both must pass clean.
+- Run `npm run test` and `npx tsc -b --noEmit` before considering any phase done. Both must pass clean. Use `-b` (build/project-references mode) — the root `tsconfig.json` has no `"files"`/`"include"`, only `"references"`, so bare `tsc --noEmit` silently checks nothing and always "passes."
 
 ## Content Authoring
 
@@ -54,7 +55,7 @@ Log meaningful additions under `[Unreleased]` in `CHANGELOG.md` as you go, not a
 ## Definition of Done (every phase)
 
 A phase is not complete until all five are true:
-1. `npx tsc --noEmit` passes clean — paste the actual terminal output.
+1. `npx tsc -b --noEmit` passes clean — paste the actual terminal output. (Not bare `npx tsc --noEmit` — see Code Standards above.)
 2. `npm run test` passes clean — paste the actual terminal output.
 3. Any new command handler, store logic, or other non-trivial pure
    function introduced this phase has unit test coverage in the same

@@ -25,6 +25,13 @@ interface PlayerStore extends PlayerState {
   dispatchCommand: (command: StateCommand) => void;
   exportSave: () => void;
   importSave: (file: File) => Promise<{ success: boolean; error?: string }>;
+  /**
+   * Resets save/progress data to initialPlayerState — same conceptual
+   * operation as importSave, but targeting a fixed reset value instead of
+   * an imported file. Does not touch static content JSON (settlements,
+   * districts, actors, etc.) — that's the world itself, not progress.
+   */
+  resetProgress: () => void;
 }
 
 function extractPlayerState(store: PlayerStore): PlayerState {
@@ -91,6 +98,10 @@ export const usePlayerStore = create<PlayerStore>()(
         }
         set({ ...result.data, eventLog: [] });
         return { success: true };
+      },
+
+      resetProgress: () => {
+        set({ ...initialPlayerState, eventLog: [] });
       },
     }),
     {

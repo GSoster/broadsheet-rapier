@@ -19,6 +19,9 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - `.nvmrc` and `package.json` `engines` field so local and CI Node versions can't silently drift apart.
 - `content-integrity.test.ts`: every file under `src/content/` is automatically validated against its schema, so new content needs no test changes to be covered.
 - `verify-phase` and `ui-visual-check` project skills (`.claude/skills/`) codifying this repo's per-phase Definition of Done and occasional real-browser verification pattern.
+- Sound-effect system: a shared, deliberately fail-silent `playSound` utility (`src/engine/audio/`), dice win/lose SFX, and an optional `entrySoundAsset` field on District/POI content (with a placeholder demonstrating the fail-silent path on both the tavern POI and its district).
+- `COMMAND_CANCEL_MINIGAME` follow-up sibling in spirit: a dev-only "Reset Progress" button in `ManagementDrawer`, resetting `PlayerState` to `initialPlayerState` for verification purposes (see `docs/decisions.md`).
+- `docs/feature-workflow.md` and `docs/features/` — a structured spec process for future feature/content work, with referential-integrity checks added to `content-integrity.test.ts` (Actor↔Faction, POI↔Actor, District↔POI cross-references) as part of the same pass.
 
 ### Changed
 - `COMMAND_ADJUST_CURRENCY` now borrows down (silver/gold break into bronze on a loss) and enforces a hard zero floor, not just carry-up on gains.
@@ -28,3 +31,4 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ### Fixed
 - CI pinned to Node 20 while local development used Node 24, causing jsdom's `undici` dependency to fail only in CI (`markAsUncloneable` missing pre-v21). CI bumped to Node 24, then centralized into `.nvmrc` as the single source of truth.
 - The Dice minigame modal had no way to close once opened if the player couldn't afford the minimum wager — no cancel, only a disabled "Throw."
+- `npx tsc --noEmit` (bare) was silently checking zero files project-wide (no `-b` to follow `tsconfig.json`'s project references) — every "clean type-check," including in CI, was vacuous. Fixed to `npx tsc -b --noEmit` everywhere it's used; fixed the one genuine type error it had been hiding.

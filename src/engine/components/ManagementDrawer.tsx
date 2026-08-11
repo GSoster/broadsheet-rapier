@@ -18,9 +18,11 @@ export interface ManagementDrawerProps {
 
 export function ManagementDrawer({ isOpen, onClose, endeavorTitles }: ManagementDrawerProps) {
   const [tab, setTab] = useState<ManagementTab>("CASE_BOARD");
+  const [isConfirmingReset, setConfirmingReset] = useState(false);
   const unlockedClues = usePlayerStore((state) => state.unlockedClues);
   const activeEndeavors = usePlayerStore((state) => state.activeEndeavors);
   const inventory = usePlayerStore((state) => state.inventory);
+  const resetProgress = usePlayerStore((state) => state.resetProgress);
 
   return (
     <AnimatePresence>
@@ -92,6 +94,42 @@ export function ManagementDrawer({ isOpen, onClose, endeavorTitles }: Management
               )
             ) : null}
           </div>
+          {import.meta.env.DEV ? (
+            <div className="border-t border-red-900 p-4">
+              {isConfirmingReset ? (
+                <div className="flex flex-col gap-2">
+                  <p className="text-xs text-red-300">Reset all progress? This cannot be undone.</p>
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        resetProgress();
+                        setConfirmingReset(false);
+                      }}
+                      className="flex-1 rounded border border-red-700 bg-red-950/60 px-3 py-1 text-xs uppercase tracking-wide text-red-200 hover:bg-red-900/60"
+                    >
+                      Confirm Reset
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setConfirmingReset(false)}
+                      className="flex-1 rounded border border-indigo-800 px-3 py-1 text-xs uppercase tracking-wide text-indigo-300 hover:border-indigo-500"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setConfirmingReset(true)}
+                  className="w-full rounded border border-red-900 px-3 py-1 text-xs uppercase tracking-wide text-red-400 hover:border-red-600 hover:text-red-200"
+                >
+                  Reset Progress (Dev)
+                </button>
+              )}
+            </div>
+          ) : null}
         </motion.aside>
       ) : null}
     </AnimatePresence>

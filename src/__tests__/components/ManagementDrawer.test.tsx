@@ -51,4 +51,44 @@ describe("ManagementDrawer", () => {
     fireEvent.click(screen.getByText("Close"));
     expect(onClose).toHaveBeenCalledTimes(1);
   });
+
+  describe("Reset Progress (dev-only)", () => {
+    it("shows the Reset Progress button when import.meta.env.DEV is true", () => {
+      render(<ManagementDrawer isOpen onClose={vi.fn()} endeavorTitles={{}} />);
+      expect(screen.getByText("Reset Progress (Dev)")).toBeInTheDocument();
+    });
+
+    it("hides the Reset Progress button when import.meta.env.DEV is false", () => {
+      vi.stubEnv("DEV", false);
+      render(<ManagementDrawer isOpen onClose={vi.fn()} endeavorTitles={{}} />);
+      expect(screen.queryByText("Reset Progress (Dev)")).not.toBeInTheDocument();
+      vi.unstubAllEnvs();
+    });
+
+    it("requires a confirm step before resetting, and does nothing on Cancel", () => {
+      usePlayerStore.setState({ currencies: { gold: 1, silver: 0, bronze: 0 } });
+      render(<ManagementDrawer isOpen onClose={vi.fn()} endeavorTitles={{}} />);
+
+      fireEvent.click(screen.getByText("Reset Progress (Dev)"));
+      expect(screen.getByText("Reset all progress? This cannot be undone.")).toBeInTheDocument();
+
+      fireEvent.click(screen.getByText("Cancel"));
+      expect(screen.queryByText("Reset all progress? This cannot be undone.")).not.toBeInTheDocument();
+      expect(usePlayerStore.getState().currencies).toEqual({ gold: 1, silver: 0, bronze: 0 });
+    });
+
+    it("resets to initialPlayerState after Confirm Reset", () => {
+      usePlayerStore.setState({
+        currencies: { gold: 1, silver: 0, bronze: 0 },
+        unlockedClues: ["clue_torn_ledger_page"],
+      });
+      render(<ManagementDrawer isOpen onClose={vi.fn()} endeavorTitles={{}} />);
+
+      fireEvent.click(screen.getByText("Reset Progress (Dev)"));
+      fireEvent.click(screen.getByText("Confirm Reset"));
+
+      expect(usePlayerStore.getState().currencies).toEqual(initialPlayerState.currencies);
+      expect(usePlayerStore.getState().unlockedClues).toEqual([]);
+    });
+  });
 });

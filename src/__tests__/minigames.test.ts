@@ -22,7 +22,10 @@ describe("COMMAND_START_MINIGAME", () => {
   it("sets activeMinigame to the dispatched payload, verbatim", () => {
     const state = makeState();
     const minigame = makeMinigame();
-    const next = applyCommand(state, { type: "COMMAND_START_MINIGAME", payload: minigame });
+    const next = applyCommand(state, {
+      type: "COMMAND_START_MINIGAME",
+      payload: minigame as unknown as Record<string, unknown>,
+    });
     expect(next.activeMinigame).toEqual(minigame);
   });
 });
