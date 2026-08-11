@@ -27,10 +27,18 @@ export type MinigameType = "DUEL" | "LOCKPICKING" | "FISHING" | "DICE";
 export const SHIFTS = ["MORNING", "AFTERNOON", "EVENING", "NIGHT"] as const;
 export type Shift = (typeof SHIFTS)[number];
 
+export const SEASONS = ["SPRING", "SUMMER", "AUTUMN", "WINTER"] as const;
+export type Season = (typeof SEASONS)[number];
+
+export const WEATHERS = ["CLEAR", "RAIN", "FOG", "STORM"] as const;
+export type Weather = (typeof WEATHERS)[number];
+
 export interface MinigameLauncherPayload {
   type: MinigameType;
   sourceId: string;
-  config: Record<string, any>;
+  // Placeholder shape pending the minigame-mechanics spec (game-design-spec.md Open Design Gaps).
+  // Once mechanics are defined, this should become a discriminated union keyed off `type`.
+  config: Record<string, unknown>;
   onSuccessCommands: StateCommand[];
   onFailureCommands: StateCommand[];
 }
@@ -40,7 +48,8 @@ export interface PlayerState {
   worldClock: {
     shift: Shift;
     day: number;
-    season: "SPRING" | "SUMMER" | "AUTUMN" | "WINTER";
+    season: Season;
+    weather: Weather;
   };
   currentLocation: {
     settlementId: string;
@@ -82,7 +91,7 @@ const StateCommandSchema: z.ZodType<StateCommand> = z.object({
 const MinigameLauncherPayloadSchema: z.ZodType<MinigameLauncherPayload> = z.object({
   type: z.enum(["DUEL", "LOCKPICKING", "FISHING", "DICE"]),
   sourceId: z.string(),
-  config: z.record(z.string(), z.any()),
+  config: z.record(z.string(), z.unknown()),
   onSuccessCommands: z.array(StateCommandSchema),
   onFailureCommands: z.array(StateCommandSchema),
 });
@@ -96,7 +105,8 @@ export const PlayerStateSchema: z.ZodType<PlayerState> = z.object({
   worldClock: z.object({
     shift: z.enum(SHIFTS),
     day: z.number(),
-    season: z.enum(["SPRING", "SUMMER", "AUTUMN", "WINTER"]),
+    season: z.enum(SEASONS),
+    weather: z.enum(WEATHERS),
   }),
   currentLocation: z.object({
     settlementId: z.string(),

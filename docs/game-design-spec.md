@@ -78,9 +78,11 @@ Player progress must be persistable across sessions, and portable as an exportab
 
 ## Open Design Gaps — Must Be Resolved Before Implementing Beyond the Technical Scaffold
 
-1. Minigame resolution mechanics (all four types) — formulas, difficulty scaling, win conditions.
+1. Minigame resolution mechanics (all four types) — formulas, difficulty scaling, win conditions. Once these are defined, `MinigameLauncherPayload.config` (currently `Record<string, unknown>` as an untyped placeholder — see `web-implementation.md` §4) should become a discriminated union keyed off `type` — `DuelConfig | LockpickingConfig | FishingConfig | DiceConfig` — instead of staying a loose record.
 2. Reputation tiers and their gameplay effects.
 3. Economy balance — prices, rewards, costs for actions and goods.
 4. Endeavor content beyond the single starter slice (`endeavor_the_missing_broadsheet`) — its actual phase-by-phase design.
+5. Weather has no update mechanism. `worldClock.weather` (`web-implementation.md` §4) is set once at initialization and nothing — no command, no automatic rotation — ever changes it. Deferred until a narrative or minigame system actually needs it (e.g. a `DUEL` affected by rain, an Endeavor phase gated on `STORM`).
+6. Dialogue branching/variation. `Actor.initialDialogue` is a single static string with no mechanism to vary based on game state (endeavor phase, unlocked clues, reputation). The state to drive this already exists (`activeEndeavors`, `unlockedClues`, `reputation`) — only the mechanism connecting dialogue content to that state is undefined. Needs its own spec before implementing beyond one static line per Actor.
 
 None of these should be invented by an implementer (human or AI) filling a gap. Each needs its own short spec, added to this file or a new `docs/` file, before code implementing it is written.

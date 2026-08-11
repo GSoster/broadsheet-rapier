@@ -38,6 +38,7 @@ test(schemas): add POI schema validation fixtures
 - Command handlers are pure where possible: given the same state and command, produce the same result.
 - No dead code, no commented-out blocks left in place — delete or don't commit it.
 - Every schema in `src/content/schemas/` needs at least one valid and one invalid fixture in `src/__tests__/`.
+- **Definition of Done includes tests alongside the logic that needs them, in the same phase — not deferred to a later testing phase.** This applies to `src/engine/{store,minigames}` logic (Vitest, `node` environment) and to `src/engine/components/` (Vitest + `@testing-library/react` + `jsdom`, structure/behavior tests — e.g. "renders X from these props," "clicking Y fires this callback"). A full visual/rendering pass (Playwright, a real browser, screenshots) is *not* required every phase — reserve it for deliberate UI milestones via the `ui-visual-check` skill, not routine per-phase verification.
 - Run `npm run test` and `npx tsc --noEmit` before considering any phase done. Both must pass clean.
 
 ## Content Authoring

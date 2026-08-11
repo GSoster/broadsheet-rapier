@@ -60,7 +60,7 @@ const handlers: Record<DispatchableCommandType, CommandHandler> = {
     const { settlementId, districtId } = payload as { settlementId: string; districtId: string };
     const moved: PlayerState = {
       ...state,
-      currentLocation: { settlementId, districtId, poiId: undefined },
+      currentLocation: { settlementId, districtId },
     };
     return applyAdvanceShift(moved);
   },
@@ -69,7 +69,7 @@ const handlers: Record<DispatchableCommandType, CommandHandler> = {
     const { districtId } = payload as { districtId: string };
     return {
       ...state,
-      currentLocation: { ...state.currentLocation, districtId, poiId: undefined },
+      currentLocation: { settlementId: state.currentLocation.settlementId, districtId },
     };
   },
 

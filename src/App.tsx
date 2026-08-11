@@ -1,122 +1,82 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from './assets/vite.svg'
-import heroImg from './assets/hero.png'
-import './App.css'
+import { useState } from "react";
+import { usePlayerStore } from "./engine/store/playerStore";
+import { WorldClockHud } from "./engine/components/WorldClockHud";
+import { WorldNavigationView } from "./engine/components/WorldNavigationView";
+import { NodeInteractionCanvas } from "./engine/components/NodeInteractionCanvas";
+import { ManagementDrawer } from "./engine/components/ManagementDrawer";
+import { MinigameOverlay } from "./engine/components/MinigameOverlay";
+
+import settlement from "./content/settlements/settlement_valdeombra_city.json";
+import district from "./content/districts/district_lantern_ward.json";
+import poi from "./content/pois/poi_crooked_hour_tavern.json";
+import actor from "./content/actors/actor_mara_venn.json";
+import endeavor from "./content/endeavors/endeavor_the_missing_broadsheet.json";
+
+const pois = [poi];
+const actors = [actor];
 
 function App() {
-  const [count, setCount] = useState(0)
+  const currentLocation = usePlayerStore((state) => state.currentLocation);
+  const dispatchCommand = usePlayerStore((state) => state.dispatchCommand);
+  const [isDrawerOpen, setDrawerOpen] = useState(false);
+  const [selectedActorId, setSelectedActorId] = useState<string | null>(null);
+
+  const currentPoi = pois.find((p) => p.id === currentLocation.poiId);
+  const selectedActor = actors.find((a) => a.id === selectedActorId) ?? null;
 
   return (
-    <>
-      <section id="center">
-        <div className="hero">
-          <img src={heroImg} className="base" width="170" height="179" alt="" />
-          <img src={reactLogo} className="framework" alt="React logo" />
-          <img src={viteLogo} className="vite" alt="Vite logo" />
-        </div>
-        <div>
-          <h1>Get started</h1>
-          <p>
-            Edit <code>src/App.tsx</code> and save to test <code>HMR</code>
-          </p>
-        </div>
-        <button
-          type="button"
-          className="counter"
-          onClick={() => setCount((count) => count + 1)}
-        >
-          Count is {count}
-        </button>
-      </section>
+    <div className="min-h-screen bg-neutral-950 pt-14 text-indigo-100">
+      <WorldClockHud />
 
-      <div className="ticks"></div>
+      <button
+        type="button"
+        onClick={() => setDrawerOpen(true)}
+        className="fixed right-4 top-16 z-30 rounded border border-indigo-800 bg-neutral-900 px-3 py-1 text-xs uppercase tracking-wide hover:border-indigo-500"
+      >
+        Journal
+      </button>
 
-      <section id="next-steps">
-        <div id="docs">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#documentation-icon"></use>
-          </svg>
-          <h2>Documentation</h2>
-          <p>Your questions, answered</p>
-          <ul>
-            <li>
-              <a href="https://vite.dev/" target="_blank">
-                <img className="logo" src={viteLogo} alt="" />
-                Explore Vite
-              </a>
-            </li>
-            <li>
-              <a href="https://react.dev/" target="_blank">
-                <img className="button-icon" src={reactLogo} alt="" />
-                Learn more
-              </a>
-            </li>
-          </ul>
-        </div>
-        <div id="social">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#social-icon"></use>
-          </svg>
-          <h2>Connect with us</h2>
-          <p>Join the Vite community</p>
-          <ul>
-            <li>
-              <a href="https://github.com/vitejs/vite" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#github-icon"></use>
-                </svg>
-                GitHub
-              </a>
-            </li>
-            <li>
-              <a href="https://chat.vite.dev/" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#discord-icon"></use>
-                </svg>
-                Discord
-              </a>
-            </li>
-            <li>
-              <a href="https://x.com/vite_js" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#x-icon"></use>
-                </svg>
-                X.com
-              </a>
-            </li>
-            <li>
-              <a href="https://bsky.app/profile/vite.dev" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#bluesky-icon"></use>
-                </svg>
-                Bluesky
-              </a>
-            </li>
-          </ul>
-        </div>
-      </section>
+      {currentPoi ? (
+        <NodeInteractionCanvas
+          poiName={currentPoi.name}
+          poiDescription={currentPoi.description}
+          imageAsset={currentPoi.imageAsset}
+          actors={actors
+            .filter((a) => currentPoi.actorIds.includes(a.id))
+            .map((a) => ({ id: a.id, name: a.name, title: a.title }))}
+          selectedActor={selectedActor}
+          onSelectActor={setSelectedActorId}
+          onLeave={() => {
+            setSelectedActorId(null);
+            dispatchCommand({
+              type: "COMMAND_MOVE_TO_DISTRICT",
+              payload: { districtId: currentLocation.districtId },
+            });
+          }}
+        />
+      ) : (
+        <WorldNavigationView
+          settlementName={settlement.name}
+          districtName={district.name}
+          pois={pois.map((p) => ({ id: p.id, name: p.name, isUnlocked: p.isUnlocked }))}
+          onSelectPoi={(poiId) => {
+            const target = pois.find((p) => p.id === poiId);
+            dispatchCommand({
+              type: "COMMAND_MOVE_TO_POI",
+              payload: { poiId, costShifts: target?.costShifts ?? 0 },
+            });
+          }}
+        />
+      )}
 
-      <div className="ticks"></div>
-      <section id="spacer"></section>
-    </>
-  )
+      <ManagementDrawer
+        isOpen={isDrawerOpen}
+        onClose={() => setDrawerOpen(false)}
+        endeavorTitles={{ [endeavor.id]: endeavor.title }}
+      />
+      <MinigameOverlay />
+    </div>
+  );
 }
 
-export default App
+export default App;

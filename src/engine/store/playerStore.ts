@@ -7,7 +7,7 @@ import { createEvent, type StateChangeEvent } from "./events";
 
 export const initialPlayerState: PlayerState = {
   currencies: { gold: 0, silver: 0, bronze: 0 },
-  worldClock: { shift: "MORNING", day: 1, season: "SPRING" },
+  worldClock: { shift: "MORNING", day: 1, season: "SPRING", weather: "CLEAR" },
   currentLocation: { settlementId: "", districtId: "" },
   reputation: { factions: {}, actors: {} },
   inventory: [],

@@ -43,6 +43,33 @@ The earlier decision (above) said it shouldn't be exposed as a UI action, but no
 **`COMMAND_ADJUST_CURRENCY` auto-normalizes bronze→silver→gold on every adjustment; no negative-balance protection added.**
 `game-design-spec.md` §5 states the 20:20 conversion rate but doesn't say whether it's applied automatically; auto-normalizing was inferred from `execution-plan.md` Phase 5 mentioning a "currency conversion boundaries (400 bronze = 1 gold)" store test. Negative-balance handling (e.g. blocking an unaffordable purchase) was deliberately left out — that's part of the economy-balance open design gap, not a structural/type concern, and inventing it now would preempt that spec.
 
+**`worldClock.weather` added to `PlayerState` as a display-only field, no weather mechanic invented.**
+`execution-plan.md`'s Phase 6 spec for `WorldClockHud` requires showing weather, but `PlayerState` had no weather field at all and `game-design-spec.md` §4 never defined its representation. Rather than skip the HUD element or invent a weather-change mechanic, added a minimal `Weather` enum (`CLEAR | RAIN | FOG | STORM`, mirroring the existing `Shift`/`Season` const-array pattern) purely so the field exists and can render. It starts at `CLEAR` and nothing currently changes it — no `CommandType` sets weather, since how/when it should change is undefined. Also promoted `Season` to the same named-const-array pattern as `Shift` while touching this code, for the same drift-prevention reason `Shift` was promoted earlier. The "nothing updates it" gap is now formalized as `game-design-spec.md`'s Open Design Gap #5, rather than only living in this log entry — so an implementer scanning gaps (not decisions) still finds it.
+
+**`MinigameLauncherPayload.config`'s eventual shape (a discriminated union) logged as a formal open gap, not just fixed as `unknown` and left implicit.**
+Changing `config: Record<string, any>` to `Record<string, unknown>` (see below) closes the immediate lint/strictness violation, but `unknown` is still a placeholder, not a real type — it says nothing about what a `DUEL` config vs. a `FISHING` config actually needs. Recorded in `game-design-spec.md`'s minigame-mechanics gap entry that once mechanics are specified, `config` should become `DuelConfig | LockpickingConfig | FishingConfig | DiceConfig` keyed off `type`, so the follow-up isn't lost between now and whenever that spec gets written.
+
+**`config: Record<string, any>` changed to `Record<string, unknown>` in both `engine/types/index.ts` and `web-implementation.md` §4's code sample.**
+`any` violated `CONTRIBUTING.md`'s "no any" rule (caught by `npm run lint`, not `tsc`, which doesn't flag it) — but it had been copied verbatim from `web-implementation.md` §4's own spec text in Phase 1, so fixing the code without fixing the doc would have made them diverge again. Both changed together, plus a comment in `index.ts` marking it a placeholder pending the minigame-mechanics spec.
+
+**Component testing (`@testing-library/react` + `jsdom`) added to the tech stack as a standing rule, not a one-off.**
+Phase 6 shipped six UI components with zero automated coverage — verified only via a manual Playwright/browser pass, which doesn't run on every future change the way `npm run test` does. Rather than re-litigate "does the DoD apply to UI" every phase, added the two packages to `CLAUDE.md`'s tech-stack boundary and wrote the rule directly into `CONTRIBUTING.md`: structure/behavior component tests (jsdom) are required alongside logic tests from now on; a full visual/real-browser pass (Playwright) is reserved for deliberate milestones via the new `ui-visual-check` skill, not routine per-phase work — screenshots are expensive and slow to be the default verification method for every small change.
+
+**Dialogue branching logged as an open gap rather than left undiscovered.**
+`Actor.initialDialogue` is one static string per Actor. The state needed to vary it (`activeEndeavors`, `unlockedClues`, `reputation`) already exists in `PlayerState`, which makes it tempting to wire up "if phase X, show line Y" ad hoc the next time an Actor needs more depth. Recorded as `game-design-spec.md` Open Design Gap #6 instead, since the actual mechanism (priority order between conditions, how much branching, authoring format) isn't specified and shouldn't be invented mid-feature.
+
+**Engine UI components take content-derived data as props; only `App.tsx` imports `src/content/` directly.**
+`web-implementation.md` §3 bars `src/engine/` from importing `src/content/`, but `WorldNavigationView` and `NodeInteractionCanvas` need settlement/district/POI/actor names and descriptions to render anything. Rather than weaken the boundary, `App.tsx` (outside `src/engine/`) does the content lookups and passes resolved data down as props — the same pattern already used for content-derived command payloads, applied to rendering.
+
+**Actor-selection state (which NPC's dialogue is showing) kept as local React state, not added to `PlayerState`.**
+It's view state — which panel of an already-open POI you're looking at — not something that needs to survive a reload or export. Adding it to `PlayerState`/`PlayerStateSchema` would have meant inventing a new persisted field with no gameplay meaning yet.
+
+**"Leaving a POI" reuses `COMMAND_MOVE_TO_DISTRICT` instead of adding a new command.**
+`COMMAND_MOVE_TO_DISTRICT` targeting the current `districtId` already clears `poiId` at zero shift cost, which is exactly "step back out to the district view." Adding a dedicated `COMMAND_LEAVE_POI` would have duplicated existing, already-tested behavior.
+
+**`MinigameOverlay.tsx` added to the component directory tree; it wasn't in the original `web-implementation.md` §7 list.**
+`execution-plan.md`'s Phase 6 section requires rendering the minigame modal overlay, but the five named components in §7 didn't include one for it. Added as its own file (full-screen modal, `activeMinigame`-driven, dispatches `COMMAND_RESOLVE_MINIGAME` with a hardcoded victory/defeat choice — no mechanic logic) rather than folding it into an existing component, and updated §7's file list to match.
+
 **Testing moved from a dedicated end-phase to alongside implementation.**
 Phase 3's command/store logic (shift rollover, currency conversion,
 reputation clamping) shipped and was approved across two phases with

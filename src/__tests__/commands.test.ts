@@ -9,7 +9,7 @@ function makeState(overrides: Partial<PlayerState> = {}): PlayerState {
 
 describe("COMMAND_ADVANCE_SHIFT", () => {
   it("advances MORNING -> AFTERNOON -> EVENING -> NIGHT without changing the day", () => {
-    let state = makeState({ worldClock: { shift: "MORNING", day: 1, season: "SPRING" } });
+    let state = makeState({ worldClock: { shift: "MORNING", day: 1, season: "SPRING", weather: "CLEAR" } });
 
     state = applyCommand(state, { type: "COMMAND_ADVANCE_SHIFT", payload: {} });
     expect(state.worldClock.shift).toBe("AFTERNOON");
@@ -25,7 +25,7 @@ describe("COMMAND_ADVANCE_SHIFT", () => {
   });
 
   it("rolls NIGHT over into the next day's MORNING", () => {
-    const state = makeState({ worldClock: { shift: "NIGHT", day: 1, season: "SPRING" } });
+    const state = makeState({ worldClock: { shift: "NIGHT", day: 1, season: "SPRING", weather: "CLEAR" } });
     const next = applyCommand(state, { type: "COMMAND_ADVANCE_SHIFT", payload: {} });
     expect(next.worldClock.shift).toBe("MORNING");
     expect(next.worldClock.day).toBe(2);
@@ -113,7 +113,7 @@ describe("COMMAND_UNLOCK_NODE", () => {
 describe("movement shift costs", () => {
   it("COMMAND_MOVE_TO_DISTRICT costs 0 shifts", () => {
     const state = makeState({
-      worldClock: { shift: "MORNING", day: 1, season: "SPRING" },
+      worldClock: { shift: "MORNING", day: 1, season: "SPRING", weather: "CLEAR" },
       currentLocation: { settlementId: "settlement_valdeombra_city", districtId: "district_lantern_ward" },
     });
     const next = applyCommand(state, {
@@ -126,9 +126,25 @@ describe("movement shift costs", () => {
     expect(next.worldClock.day).toBe(1);
   });
 
+  it("COMMAND_MOVE_TO_DISTRICT clears poiId when moving out of a POI", () => {
+    const state = makeState({
+      currentLocation: {
+        settlementId: "settlement_valdeombra_city",
+        districtId: "district_lantern_ward",
+        poiId: "poi_crooked_hour_tavern",
+      },
+    });
+    const next = applyCommand(state, {
+      type: "COMMAND_MOVE_TO_DISTRICT",
+      payload: { districtId: "district_lantern_ward" },
+    });
+    expect(next.currentLocation.poiId).toBeUndefined();
+    expect("poiId" in next.currentLocation).toBe(false);
+  });
+
   it("COMMAND_MOVE_TO_SETTLEMENT costs 1 shift", () => {
     const state = makeState({
-      worldClock: { shift: "MORNING", day: 1, season: "SPRING" },
+      worldClock: { shift: "MORNING", day: 1, season: "SPRING", weather: "CLEAR" },
       currentLocation: { settlementId: "settlement_valdeombra_city", districtId: "district_lantern_ward" },
     });
     const next = applyCommand(state, {
@@ -145,7 +161,7 @@ describe("movement shift costs", () => {
 
   it("COMMAND_MOVE_TO_SETTLEMENT rolls the day over when departing on NIGHT", () => {
     const state = makeState({
-      worldClock: { shift: "NIGHT", day: 1, season: "SPRING" },
+      worldClock: { shift: "NIGHT", day: 1, season: "SPRING", weather: "CLEAR" },
       currentLocation: { settlementId: "settlement_valdeombra_city", districtId: "district_lantern_ward" },
     });
     const next = applyCommand(state, {
@@ -160,7 +176,7 @@ describe("movement shift costs", () => {
 describe("COMMAND_MOVE_TO_POI", () => {
   it("sets the poi and advances shifts by the supplied costShifts, leaving settlement/district untouched", () => {
     const state = makeState({
-      worldClock: { shift: "MORNING", day: 1, season: "SPRING" },
+      worldClock: { shift: "MORNING", day: 1, season: "SPRING", weather: "CLEAR" },
       currentLocation: { settlementId: "settlement_valdeombra_city", districtId: "district_lantern_ward" },
     });
     const next = applyCommand(state, {
@@ -176,7 +192,7 @@ describe("COMMAND_MOVE_TO_POI", () => {
   });
 
   it("does not advance shifts when costShifts is omitted", () => {
-    const state = makeState({ worldClock: { shift: "MORNING", day: 1, season: "SPRING" } });
+    const state = makeState({ worldClock: { shift: "MORNING", day: 1, season: "SPRING", weather: "CLEAR" } });
     const next = applyCommand(state, {
       type: "COMMAND_MOVE_TO_POI",
       payload: { poiId: "poi_crooked_hour_tavern" },
