@@ -4,7 +4,7 @@ import { fireEvent, render, screen } from "@testing-library/react";
 import { NodeInteractionCanvas } from "../../engine/components/NodeInteractionCanvas";
 
 describe("NodeInteractionCanvas", () => {
-  const actors = [{ id: "actor_mara_venn", name: "Mara Venn", title: "City Watch Sergeant" }];
+  const actors = [{ id: "actor_mara_venn", name: "Mara Venn", title: "Wagering Ring Regular" }];
 
   it("renders the POI name/description and its actors", () => {
     render(
@@ -12,7 +12,7 @@ describe("NodeInteractionCanvas", () => {
         poiName="The Crooked Hour"
         poiDescription="A tavern with a floor that slopes toward the door."
         actors={actors}
-        selectedActor={null}
+        selectedActorId={null}
         onSelectActor={vi.fn()}
         onLeave={vi.fn()}
       />
@@ -22,20 +22,6 @@ describe("NodeInteractionCanvas", () => {
     expect(screen.getByText(/Mara Venn/)).toBeInTheDocument();
   });
 
-  it("does not show a dialogue quote until an actor is selected", () => {
-    render(
-      <NodeInteractionCanvas
-        poiName="The Crooked Hour"
-        poiDescription="desc"
-        actors={actors}
-        selectedActor={null}
-        onSelectActor={vi.fn()}
-        onLeave={vi.fn()}
-      />
-    );
-    expect(screen.queryByRole("blockquote")).not.toBeInTheDocument();
-  });
-
   it("fires onSelectActor with the clicked actor's id", () => {
     const onSelectActor = vi.fn();
     render(
@@ -43,7 +29,7 @@ describe("NodeInteractionCanvas", () => {
         poiName="The Crooked Hour"
         poiDescription="desc"
         actors={actors}
-        selectedActor={null}
+        selectedActorId={null}
         onSelectActor={onSelectActor}
         onLeave={vi.fn()}
       />
@@ -52,23 +38,18 @@ describe("NodeInteractionCanvas", () => {
     expect(onSelectActor).toHaveBeenCalledWith("actor_mara_venn");
   });
 
-  it("shows the selected actor's dialogue once selectedActor is set", () => {
+  it("highlights the actor button matching selectedActorId", () => {
     render(
       <NodeInteractionCanvas
         poiName="The Crooked Hour"
         poiDescription="desc"
         actors={actors}
-        selectedActor={{
-          id: "actor_mara_venn",
-          name: "Mara Venn",
-          title: "City Watch Sergeant",
-          initialDialogue: "Another broadsheet gone quiet and nobody's talking.",
-        }}
+        selectedActorId="actor_mara_venn"
         onSelectActor={vi.fn()}
         onLeave={vi.fn()}
       />
     );
-    expect(screen.getByText(/Another broadsheet gone quiet/)).toBeInTheDocument();
+    expect(screen.getByText(/Mara Venn/).closest("button")).toHaveClass("border-indigo-400");
   });
 
   it("fires onLeave when the Back button is clicked", () => {
@@ -78,7 +59,7 @@ describe("NodeInteractionCanvas", () => {
         poiName="The Crooked Hour"
         poiDescription="desc"
         actors={actors}
-        selectedActor={null}
+        selectedActorId={null}
         onSelectActor={vi.fn()}
         onLeave={onLeave}
       />

@@ -7,5 +7,5 @@
   "poiId": "poi_crooked_hour_tavern",
   "factionIds": ["faction_wagering_ring"],
   "title": "Wagering Ring Regular",
-  "initialDialogue": "Another broadsheet gone quiet and nobody's talking. Funny how that keeps happening to the ones printing the truth."
+  "dialogueId": "dialogue_mara_venn"
 }

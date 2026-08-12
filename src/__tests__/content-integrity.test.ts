@@ -6,6 +6,7 @@ import { PoiSchema } from "../content/schemas/poi.schema";
 import { ActorSchema } from "../content/schemas/actor.schema";
 import { FactionSchema } from "../content/schemas/faction.schema";
 import { EndeavorSchema } from "../content/schemas/endeavor.schema";
+import { DialogueSchema } from "../content/schemas/dialogue.schema";
 
 // Every real content file under src/content/ must validate against its
 // schema — enumerated via import.meta.glob so this scales automatically as
@@ -35,6 +36,11 @@ const contentGroups: Array<{ label: string; schema: z.ZodType; files: Record<str
     label: "endeavors",
     schema: EndeavorSchema,
     files: import.meta.glob("../content/endeavors/*.json", { eager: true }),
+  },
+  {
+    label: "dialogues",
+    schema: DialogueSchema,
+    files: import.meta.glob("../content/dialogues/*.json", { eager: true }),
   },
 ];
 
@@ -85,10 +91,12 @@ const districts = loadAll(groupFiles("districts"));
 const pois = loadAll(groupFiles("pois"));
 const actors = loadAll(groupFiles("actors"));
 const factions = loadAll(groupFiles("factions"));
+const dialogues = loadAll(groupFiles("dialogues"));
 
 const factionIdSet = new Set(factions.map((faction) => faction.id as string));
 const actorIdSet = new Set(actors.map((actor) => actor.id as string));
 const poiIdSet = new Set(pois.map((poi) => poi.id as string));
+const dialogueIdSet = new Set(dialogues.map((dialogue) => dialogue.id as string));
 
 describe("content integrity: referential integrity", () => {
   describe("Actor.factionIds -> Faction", () => {
@@ -130,6 +138,41 @@ describe("content integrity: referential integrity", () => {
           const poi = pois.find((candidate) => candidate.id === poiId);
           expect(poi?.districtId).toBe(district.id);
         });
+      }
+    }
+  });
+
+  describe("Actor.dialogueId -> Dialogue", () => {
+    for (const actor of actors) {
+      const dialogueId = actor.dialogueId as string;
+      it(`${actor.id}.dialogueId references an existing dialogue ("${dialogueId}")`, () => {
+        expect(dialogueIdSet.has(dialogueId)).toBe(true);
+      });
+    }
+  });
+
+  describe("Dialogue node id consistency and node references", () => {
+    for (const dialogue of dialogues) {
+      const nodes = dialogue.nodes as Record<string, { id: string; choices?: Array<{ nextNodeId?: string }> }>;
+      const nodeKeys = new Set(Object.keys(nodes));
+
+      for (const [key, node] of Object.entries(nodes)) {
+        it(`${dialogue.id}.nodes["${key}"].id matches its own key`, () => {
+          expect(node.id).toBe(key);
+        });
+      }
+
+      it(`${dialogue.id}.startNodeId ("${dialogue.startNodeId}") resolves to a real node`, () => {
+        expect(nodeKeys.has(dialogue.startNodeId as string)).toBe(true);
+      });
+
+      for (const [key, node] of Object.entries(nodes)) {
+        for (const choice of node.choices ?? []) {
+          if (choice.nextNodeId === undefined) continue; // omitted = ends the conversation, not a reference
+          it(`${dialogue.id}.nodes["${key}"] choice references an existing node ("${choice.nextNodeId}")`, () => {
+            expect(nodeKeys.has(choice.nextNodeId as string)).toBe(true);
+          });
+        }
       }
     }
   });

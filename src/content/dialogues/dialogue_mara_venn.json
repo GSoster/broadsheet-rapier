@@ -1,0 +1,86 @@
+{
+  "id": "dialogue_mara_venn",
+  "startNodeId": "node_greeting",
+  "nodes": {
+    "node_greeting": {
+      "id": "node_greeting",
+      "speaker": "Mara Venn",
+      "text": "Another broadsheet gone quiet and nobody's talking. Funny how that keeps happening to the ones printing the truth.",
+      "choices": [
+        {
+          "id": "choice_ask_about_broadsheet",
+          "text": "What do you know about it?",
+          "nextNodeId": "node_engaged",
+          "commands": [
+            {
+              "type": "COMMAND_ADJUST_REPUTATION",
+              "payload": { "targetType": "actor", "targetId": "actor_mara_venn", "amount": 5 }
+            },
+            {
+              "type": "COMMAND_START_ENDEAVOR",
+              "payload": { "endeavorId": "endeavor_the_missing_broadsheet", "initialPhaseId": "phase_ask_around" }
+            }
+          ]
+        },
+        {
+          "id": "choice_leave_greeting",
+          "text": "Never mind.",
+          "commands": []
+        }
+      ]
+    },
+    "node_engaged": {
+      "id": "node_engaged",
+      "speaker": "Mara Venn",
+      "text": "She leans in, voice low. \"Whoever's behind it paid well to keep it that way. I hear things, but hearing and telling are different coin.\"",
+      "choices": [
+        {
+          "id": "choice_ask_again",
+          "text": "Go on, what else have you heard?",
+          "nextNodeId": "node_engaged",
+          "commands": [
+            {
+              "type": "COMMAND_ADJUST_REPUTATION",
+              "payload": { "targetType": "actor", "targetId": "actor_mara_venn", "amount": 5 }
+            }
+          ]
+        },
+        {
+          "id": "choice_press_for_lead",
+          "text": "You know more than you're saying.",
+          "nextNodeId": "node_lead_revealed",
+          "requires": {
+            "minActorReputation": { "actorId": "actor_mara_venn", "value": 10 }
+          },
+          "commands": []
+        },
+        {
+          "id": "choice_end_engaged",
+          "text": "That's useful. I'll ask around.",
+          "commands": []
+        }
+      ]
+    },
+    "node_lead_revealed": {
+      "id": "node_lead_revealed",
+      "speaker": "Mara Venn",
+      "text": "There's a name — Corvin Thale, runs the numbers out of a warehouse near the Salt Quay. He's the one who paid to keep that press quiet. Careful how you go at him.",
+      "choices": [
+        {
+          "id": "choice_thank_and_advance",
+          "text": "That's exactly what I needed.",
+          "commands": [
+            {
+              "type": "COMMAND_ADVANCE_ENDEAVOR_PHASE",
+              "payload": {
+                "endeavorId": "endeavor_the_missing_broadsheet",
+                "nextPhaseId": "phase_confront_the_buyer",
+                "unlocksNodesOnComplete": []
+              }
+            }
+          ]
+        }
+      ]
+    }
+  }
+}

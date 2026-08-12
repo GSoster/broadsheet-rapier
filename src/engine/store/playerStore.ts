@@ -18,6 +18,7 @@ export const initialPlayerState: PlayerState = {
   unlockedClues: [],
   activeEndeavors: {},
   activeMinigame: null,
+  dialogueProgress: {},
 };
 
 interface PlayerStore extends PlayerState {
@@ -45,6 +46,7 @@ function extractPlayerState(store: PlayerStore): PlayerState {
     unlockedClues: store.unlockedClues,
     activeEndeavors: store.activeEndeavors,
     activeMinigame: store.activeMinigame,
+    dialogueProgress: store.dialogueProgress,
   };
 }
 

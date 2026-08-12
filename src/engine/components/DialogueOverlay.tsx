@@ -1,0 +1,73 @@
+import type { DialogueRequirement, StateCommand } from "../types";
+import { usePlayerStore } from "../store/playerStore";
+import { evaluateDialogueRequirement } from "../utils/evaluator";
+
+// Locally-owned shape, not imported from src/content/schemas/dialogue.schema.ts —
+// src/engine/ never imports from src/content/ as hardcoded data (CLAUDE.md).
+// App.tsx (which does read content) resolves a real Dialogue's node and passes
+// it down structurally matching this shape, same pattern as
+// NodeInteractionCanvas's locally-owned NodeInteractionActor/Action types.
+export interface DialogueOverlayChoice {
+  id: string;
+  text: string;
+  nextNodeId?: string;
+  requires?: DialogueRequirement;
+  commands: StateCommand[];
+}
+
+export interface DialogueOverlayNode {
+  id: string;
+  speaker: string;
+  text: string;
+  choices: DialogueOverlayChoice[];
+}
+
+export interface DialogueOverlayProps {
+  dialogueId: string;
+  node: DialogueOverlayNode | null;
+  onClose: () => void;
+}
+
+export function DialogueOverlay({ dialogueId, node, onClose }: DialogueOverlayProps) {
+  const playerState = usePlayerStore((state) => state);
+  const dispatchCommand = usePlayerStore((state) => state.dispatchCommand);
+
+  if (!node) {
+    return null;
+  }
+
+  const handleSelectChoice = (choice: DialogueOverlayChoice) => {
+    dispatchCommand({
+      type: "COMMAND_SELECT_DIALOGUE_CHOICE",
+      payload: { dialogueId, nextNodeId: choice.nextNodeId ?? null, commands: choice.commands },
+    });
+    if (choice.nextNodeId === undefined) {
+      onClose();
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80">
+      <div className="flex w-full max-w-lg flex-col gap-4 rounded border border-indigo-800 bg-neutral-950 p-6 text-indigo-100">
+        <p className="text-xs uppercase tracking-wide text-indigo-400">{node.speaker}</p>
+        <p className="text-sm italic text-indigo-200">&ldquo;{node.text}&rdquo;</p>
+        <div className="flex flex-col gap-2 border-t border-indigo-900 pt-4">
+          {node.choices.map((choice) => {
+            const isAvailable = evaluateDialogueRequirement(playerState, choice.requires, node.id, dialogueId);
+            return (
+              <button
+                key={choice.id}
+                type="button"
+                disabled={!isAvailable}
+                onClick={() => handleSelectChoice(choice)}
+                className="rounded border border-amber-700 bg-amber-950/40 px-3 py-2 text-left text-sm text-amber-100 disabled:cursor-not-allowed disabled:opacity-40 enabled:hover:border-amber-500"
+              >
+                {choice.text}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+}

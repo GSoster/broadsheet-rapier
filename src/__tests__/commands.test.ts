@@ -331,3 +331,122 @@ describe("COMMAND_START_ENDEAVOR / COMMAND_ADVANCE_ENDEAVOR_PHASE", () => {
     expect(next.unlockedNodes.poi_crooked_hour_tavern).toBe(true);
   });
 });
+
+describe("COMMAND_ENTER_DIALOGUE_NODE", () => {
+  it("sets currentNodeId and increments the visit count on first entry", () => {
+    const state = makeState();
+    const next = applyCommand(state, {
+      type: "COMMAND_ENTER_DIALOGUE_NODE",
+      payload: { dialogueId: "dialogue_mara_venn", nodeId: "node_greeting" },
+    });
+    expect(next.dialogueProgress.dialogue_mara_venn).toEqual({
+      currentNodeId: "node_greeting",
+      visitCounts: { node_greeting: 1 },
+    });
+  });
+
+  it("increments the visit count again on a repeat visit to the same node", () => {
+    const state = makeState({
+      dialogueProgress: {
+        dialogue_mara_venn: { currentNodeId: "node_greeting", visitCounts: { node_greeting: 1 } },
+      },
+    });
+    const next = applyCommand(state, {
+      type: "COMMAND_ENTER_DIALOGUE_NODE",
+      payload: { dialogueId: "dialogue_mara_venn", nodeId: "node_greeting" },
+    });
+    expect(next.dialogueProgress.dialogue_mara_venn.visitCounts.node_greeting).toBe(2);
+  });
+
+  it("leaves other dialogues' progress untouched", () => {
+    const state = makeState({
+      dialogueProgress: {
+        dialogue_other: { currentNodeId: "node_x", visitCounts: { node_x: 3 } },
+      },
+    });
+    const next = applyCommand(state, {
+      type: "COMMAND_ENTER_DIALOGUE_NODE",
+      payload: { dialogueId: "dialogue_mara_venn", nodeId: "node_greeting" },
+    });
+    expect(next.dialogueProgress.dialogue_other).toEqual({
+      currentNodeId: "node_x",
+      visitCounts: { node_x: 3 },
+    });
+  });
+});
+
+describe("COMMAND_SELECT_DIALOGUE_CHOICE", () => {
+  it("advances currentNodeId and runs the choice's commands", () => {
+    const state = makeState({
+      dialogueProgress: {
+        dialogue_mara_venn: { currentNodeId: "node_greeting", visitCounts: { node_greeting: 1 } },
+      },
+    });
+    const next = applyCommand(state, {
+      type: "COMMAND_SELECT_DIALOGUE_CHOICE",
+      payload: {
+        dialogueId: "dialogue_mara_venn",
+        nextNodeId: "node_engaged",
+        commands: [
+          { type: "COMMAND_ADJUST_REPUTATION", payload: { targetType: "actor", targetId: "actor_mara_venn", amount: 5 } },
+        ],
+      },
+    });
+    expect(next.dialogueProgress.dialogue_mara_venn.currentNodeId).toBe("node_engaged");
+    expect(next.dialogueProgress.dialogue_mara_venn.visitCounts.node_engaged).toBe(1);
+    expect(next.reputation.actors.actor_mara_venn).toBe(5);
+  });
+
+  it("with nextNodeId: null, skips the dialogueProgress update but still runs commands", () => {
+    const state = makeState({
+      dialogueProgress: {
+        dialogue_mara_venn: { currentNodeId: "node_lead_revealed", visitCounts: { node_lead_revealed: 1 } },
+      },
+      activeEndeavors: {
+        endeavor_the_missing_broadsheet: { currentPhaseId: "phase_ask_around", logHistory: [] },
+      },
+    });
+    const next = applyCommand(state, {
+      type: "COMMAND_SELECT_DIALOGUE_CHOICE",
+      payload: {
+        dialogueId: "dialogue_mara_venn",
+        nextNodeId: null,
+        commands: [
+          {
+            type: "COMMAND_ADVANCE_ENDEAVOR_PHASE",
+            payload: {
+              endeavorId: "endeavor_the_missing_broadsheet",
+              nextPhaseId: "phase_confront_the_buyer",
+              unlocksNodesOnComplete: [],
+            },
+          },
+        ],
+      },
+    });
+    expect(next.dialogueProgress.dialogue_mara_venn).toEqual({
+      currentNodeId: "node_lead_revealed",
+      visitCounts: { node_lead_revealed: 1 },
+    });
+    expect(next.activeEndeavors.endeavor_the_missing_broadsheet.currentPhaseId).toBe("phase_confront_the_buyer");
+  });
+
+  it("tolerates a missing commands field (statically-imported content bypasses the schema's .default([]))", () => {
+    const state = makeState();
+    const next = applyCommand(state, {
+      type: "COMMAND_SELECT_DIALOGUE_CHOICE",
+      payload: { dialogueId: "dialogue_mara_venn", nextNodeId: "node_greeting" },
+    });
+    expect(next.dialogueProgress.dialogue_mara_venn.currentNodeId).toBe("node_greeting");
+  });
+
+  it("an empty commands array is a no-op beyond the node transition", () => {
+    const state = makeState();
+    const next = applyCommand(state, {
+      type: "COMMAND_SELECT_DIALOGUE_CHOICE",
+      payload: { dialogueId: "dialogue_mara_venn", nextNodeId: "node_greeting", commands: [] },
+    });
+    expect(next.dialogueProgress.dialogue_mara_venn.currentNodeId).toBe("node_greeting");
+    expect(next.currencies).toEqual(state.currencies);
+    expect(next.reputation).toEqual(state.reputation);
+  });
+});

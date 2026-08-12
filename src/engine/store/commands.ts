@@ -52,6 +52,19 @@ function clampReputation(value: number): number {
   return Math.max(-100, Math.min(100, value));
 }
 
+function enterDialogueNode(state: PlayerState, dialogueId: string, nodeId: string): PlayerState {
+  const existing = state.dialogueProgress[dialogueId];
+  const visitCounts = { ...(existing?.visitCounts ?? {}) };
+  visitCounts[nodeId] = (visitCounts[nodeId] ?? 0) + 1;
+  return {
+    ...state,
+    dialogueProgress: {
+      ...state.dialogueProgress,
+      [dialogueId]: { currentNodeId: nodeId, visitCounts },
+    },
+  };
+}
+
 type DispatchableCommandType = Exclude<CommandType, "COMMAND_NEXT_DAY">;
 
 const handlers: Record<DispatchableCommandType, CommandHandler> = {
@@ -195,6 +208,41 @@ const handlers: Record<DispatchableCommandType, CommandHandler> = {
   // this is for backing out before playing (e.g. a wager the player can't
   // or no longer wants to afford), not a win/lose outcome.
   COMMAND_CANCEL_MINIGAME: (state) => ({ ...state, activeMinigame: null }),
+
+  // Pure bookkeeping: opening or resuming a conversation. No commands field
+  // in the payload shape at all — this command cannot have side effects, by
+  // construction, not by convention.
+  COMMAND_ENTER_DIALOGUE_NODE: (state, payload) => {
+    const { dialogueId, nodeId } = payload as { dialogueId: string; nodeId: string };
+    return enterDialogueNode(state, dialogueId, nodeId);
+  },
+
+  // Advances AND dispatches consequences. Always has a commands field
+  // (possibly empty), because a choice with no listed consequences is still
+  // explicitly "this was a choice selection," not "this was bookkeeping."
+  // nextNodeId is nullable at the command-payload level: null means "this
+  // choice ends the conversation," handled by skipping the dialogueProgress
+  // update entirely, not by substituting the current node id back in (which
+  // would double-count a visit to the node the player is leaving).
+  COMMAND_SELECT_DIALOGUE_CHOICE: (state, payload) => {
+    const { dialogueId, nextNodeId, commands } = payload as {
+      dialogueId: string;
+      nextNodeId: string | null;
+      commands?: StateCommand[];
+    };
+    let next = nextNodeId === null ? state : enterDialogueNode(state, dialogueId, nextNodeId);
+    // `commands` defaults to [] at the DialogueChoiceSchema level, but that
+    // Zod default only applies when content is actually parsed through the
+    // schema — App.tsx's static JSON imports never are (see
+    // docs/web-implementation.md §4's discriminated-union scoping note), so
+    // a choice that omits `commands` in its authored JSON reaches this
+    // handler as `undefined`, not `[]`. Same `?? []` pattern already used for
+    // COMMAND_ADVANCE_ENDEAVOR_PHASE's optional unlocksNodesOnComplete.
+    for (const command of commands ?? []) {
+      next = applyCommand(next, command);
+    }
+    return next;
+  },
 };
 
 export function applyCommand(state: PlayerState, command: StateCommand): PlayerState {

@@ -8,21 +8,24 @@ import { WorldNavigationView } from "./engine/components/WorldNavigationView";
 import { NodeInteractionCanvas, type NodeInteractionAction } from "./engine/components/NodeInteractionCanvas";
 import { ManagementDrawer } from "./engine/components/ManagementDrawer";
 import { MinigameOverlay } from "./engine/components/MinigameOverlay";
+import { DialogueOverlay } from "./engine/components/DialogueOverlay";
 
 import settlement from "./content/settlements/settlement_valdeombra_city.json";
 import district from "./content/districts/district_lantern_ward.json";
 import poi from "./content/pois/poi_crooked_hour_tavern.json";
 import actor from "./content/actors/actor_mara_venn.json";
 import endeavor from "./content/endeavors/endeavor_the_missing_broadsheet.json";
+import dialogueMaraVennRaw from "./content/dialogues/dialogue_mara_venn.json";
+import type { Dialogue } from "./content/schemas/dialogue.schema";
+import { resolveDialogueEntryNodeId } from "./dialogueResolution";
 
 const pois = [poi];
 const actors = [actor];
 
-const MARA_ID = "actor_mara_venn";
+const dialogueMaraVenn = dialogueMaraVennRaw as Dialogue;
+const dialogues: Record<string, Dialogue> = { [dialogueMaraVenn.id]: dialogueMaraVenn };
+
 const ENDEAVOR_ID = "endeavor_the_missing_broadsheet";
-const REPUTATION_THRESHOLD_FOR_LEAD = 10;
-const MARA_LEAD_DIALOGUE =
-  "There's a name — Corvin Thale, runs the numbers out of a warehouse near the Salt Quay. He's the one who paid to keep that press quiet. Careful how you go at him.";
 
 // Small named trigger functions rather than inline checks next to the
 // dispatch/mount logic — cheap now, and avoids scattered inline effect
@@ -44,11 +47,12 @@ function triggerPoiEntryEffects(activePoi: (typeof pois)[number]): void {
 function App() {
   const currentLocation = usePlayerStore((state) => state.currentLocation);
   const currencies = usePlayerStore((state) => state.currencies);
-  const reputation = usePlayerStore((state) => state.reputation);
   const activeEndeavors = usePlayerStore((state) => state.activeEndeavors);
+  const dialogueProgress = usePlayerStore((state) => state.dialogueProgress);
   const dispatchCommand = usePlayerStore((state) => state.dispatchCommand);
   const [isDrawerOpen, setDrawerOpen] = useState(false);
   const [selectedActorId, setSelectedActorId] = useState<string | null>(null);
+  const [openDialogueId, setOpenDialogueId] = useState<string | null>(null);
 
   useEffect(() => {
     triggerDistrictEntryEffects(district);
@@ -61,51 +65,23 @@ function App() {
 
   const currentPoi = pois.find((p) => p.id === currentLocation.poiId);
 
-  const maraReputation = reputation.actors[MARA_ID] ?? 0;
-  const maraDialogue = maraReputation >= REPUTATION_THRESHOLD_FOR_LEAD ? MARA_LEAD_DIALOGUE : actor.initialDialogue;
-
-  const selectedActorRaw = actors.find((a) => a.id === selectedActorId) ?? null;
-  const selectedActor = selectedActorRaw
-    ? {
-        id: selectedActorRaw.id,
-        name: selectedActorRaw.name,
-        title: selectedActorRaw.title,
-        initialDialogue: selectedActorRaw.id === MARA_ID ? maraDialogue : selectedActorRaw.initialDialogue,
-      }
+  const openDialogue = openDialogueId ? dialogues[openDialogueId] : null;
+  const openNode = openDialogue
+    ? openDialogue.nodes[resolveDialogueEntryNodeId(openDialogue, dialogueProgress[openDialogue.id])]
     : null;
 
   const handleSelectActor = (actorId: string) => {
     setSelectedActorId(actorId);
-    if (actorId !== MARA_ID) return;
+    const selected = actors.find((a) => a.id === actorId);
+    const dialogue = selected ? dialogues[selected.dialogueId] : undefined;
+    if (!dialogue) return;
 
+    const entryNodeId = resolveDialogueEntryNodeId(dialogue, dialogueProgress[dialogue.id]);
     dispatchCommand({
-      type: "COMMAND_ADJUST_REPUTATION",
-      payload: { targetType: "actor", targetId: MARA_ID, amount: 5 },
+      type: "COMMAND_ENTER_DIALOGUE_NODE",
+      payload: { dialogueId: dialogue.id, nodeId: entryNodeId },
     });
-
-    const afterReputationBump = usePlayerStore.getState();
-    const hasStartedEndeavor = Boolean(afterReputationBump.activeEndeavors[ENDEAVOR_ID]);
-
-    if (!hasStartedEndeavor) {
-      dispatchCommand({
-        type: "COMMAND_START_ENDEAVOR",
-        payload: { endeavorId: ENDEAVOR_ID, initialPhaseId: "phase_ask_around" },
-      });
-    }
-
-    const updatedReputation = afterReputationBump.reputation.actors[MARA_ID] ?? 0;
-    const currentPhase = afterReputationBump.activeEndeavors[ENDEAVOR_ID]?.currentPhaseId ?? "phase_ask_around";
-
-    if (updatedReputation >= REPUTATION_THRESHOLD_FOR_LEAD && currentPhase === "phase_ask_around") {
-      dispatchCommand({
-        type: "COMMAND_ADVANCE_ENDEAVOR_PHASE",
-        payload: {
-          endeavorId: ENDEAVOR_ID,
-          nextPhaseId: "phase_confront_the_buyer",
-          unlocksNodesOnComplete: [],
-        },
-      });
-    }
+    setOpenDialogueId(dialogue.id);
   };
 
   function buildPoiActions(activePoi: (typeof pois)[number]): NodeInteractionAction[] {
@@ -174,11 +150,12 @@ function App() {
           actors={actors
             .filter((a) => currentPoi.actorIds.includes(a.id))
             .map((a) => ({ id: a.id, name: a.name, title: a.title }))}
-          selectedActor={selectedActor}
+          selectedActorId={selectedActorId}
           actions={buildPoiActions(currentPoi)}
           onSelectActor={handleSelectActor}
           onLeave={() => {
             setSelectedActorId(null);
+            setOpenDialogueId(null);
             dispatchCommand({
               type: "COMMAND_MOVE_TO_DISTRICT",
               payload: { districtId: currentLocation.districtId },
@@ -209,6 +186,11 @@ function App() {
         endeavorTitles={{ [endeavor.id]: endeavor.title }}
       />
       <MinigameOverlay />
+      <DialogueOverlay
+        dialogueId={openDialogueId ?? ""}
+        node={openNode}
+        onClose={() => setOpenDialogueId(null)}
+      />
     </div>
   );
 }

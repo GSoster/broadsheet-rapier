@@ -22,11 +22,16 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - Sound-effect system: a shared, deliberately fail-silent `playSound` utility (`src/engine/audio/`), dice win/lose SFX, and an optional `entrySoundAsset` field on District/POI content (with a placeholder demonstrating the fail-silent path on both the tavern POI and its district).
 - `COMMAND_CANCEL_MINIGAME` follow-up sibling in spirit: a dev-only "Reset Progress" button in `ManagementDrawer`, resetting `PlayerState` to `initialPlayerState` for verification purposes (see `docs/decisions.md`).
 - `docs/feature-workflow.md` and `docs/features/` — a structured spec process for future feature/content work, with referential-integrity checks added to `content-integrity.test.ts` (Actor↔Faction, POI↔Actor, District↔POI cross-references) as part of the same pass.
+- Branching dialogue system: `DialogueSchema`/`DialogueNodeSchema`/`DialogueChoiceSchema`/`DialogueRequirementSchema` (`src/content/schemas/dialogue.schema.ts`), a `DialogueRequirement` evaluator (`src/engine/utils/evaluator.ts`), two new commands (`COMMAND_ENTER_DIALOGUE_NODE`, `COMMAND_SELECT_DIALOGUE_CHOICE`), a `DialogueOverlay` component, and `dialogueProgress` persisted on `PlayerState`. Mara Venn's dialogue is now a real branching tree (`src/content/dialogues/dialogue_mara_venn.json`) with a reputation-gated choice, choice-triggered consequences, and an ending choice with consequences.
+- Referential-integrity checks in `content-integrity.test.ts` extended to cover `Actor.dialogueId -> Dialogue` and dialogue node id/reference consistency.
 
 ### Changed
 - `COMMAND_ADJUST_CURRENCY` now borrows down (silver/gold break into bronze on a loss) and enforces a hard zero floor, not just carry-up on gains.
 - Mara Venn's faction corrected from `faction_city_watch` to `faction_wagering_ring`; title and description updated to match ("Wagering Ring Regular").
 - Player now starts with a small currency purse (50 bronze-equivalent) instead of zero, so the gambling loop is reachable from a fresh save.
+- `StateCommandSchema` restructured from a loose `{ type, payload: Record<string, unknown> }` schema into a `.strict()` discriminated union, one payload schema per command — a malformed or extra-keyed content-authored command payload now fails validation at test/CI time and on save-file import instead of silently passing.
+- **Breaking:** `Actor.initialDialogue: string` replaced by `Actor.dialogueId: string`, pointing at a `Dialogue` content file. No backward-compatibility layer — one actor in the project, no live players.
+- Mara Venn's reputation gain, endeavor start, and endeavor phase advance moved from unconditional `App.tsx` click-handler side effects into `commands` on specific dialogue choices — reputation now accrues from engaging in the conversation, not from any click on her name. `NodeInteractionCanvas` no longer renders dialogue text directly; `DialogueOverlay` (mounted as an `App.tsx`-level sibling, like `MinigameOverlay`) does.
 
 ### Fixed
 - CI pinned to Node 20 while local development used Node 24, causing jsdom's `undici` dependency to fail only in CI (`markAsUncloneable` missing pre-v21). CI bumped to Node 24, then centralized into `.nvmrc` as the single source of truth.

@@ -38,6 +38,7 @@ describe("localStorage persistence", () => {
         "activeMinigame",
         "currencies",
         "currentLocation",
+        "dialogueProgress",
         "inventory",
         "reputation",
         "unlockedClues",

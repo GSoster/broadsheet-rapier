@@ -5,6 +5,7 @@ import { PoiSchema } from "../content/schemas/poi.schema";
 import { ActorSchema } from "../content/schemas/actor.schema";
 import { FactionSchema } from "../content/schemas/faction.schema";
 import { EndeavorSchema } from "../content/schemas/endeavor.schema";
+import { DialogueSchema } from "../content/schemas/dialogue.schema";
 
 import validSettlement from "../content/settlements/settlement_valdeombra_city.json";
 import validDistrict from "../content/districts/district_lantern_ward.json";
@@ -12,6 +13,7 @@ import validPoi from "../content/pois/poi_crooked_hour_tavern.json";
 import validActor from "../content/actors/actor_mara_venn.json";
 import validFaction from "../content/factions/faction_city_watch.json";
 import validEndeavor from "../content/endeavors/endeavor_the_missing_broadsheet.json";
+import validDialogue from "../content/dialogues/dialogue_mara_venn.json";
 
 describe("SettlementSchema", () => {
   it("accepts the starter settlement fixture", () => {
@@ -74,9 +76,9 @@ describe("ActorSchema", () => {
     expect(ActorSchema.safeParse(validActor).success).toBe(true);
   });
 
-  it("rejects an actor missing initialDialogue", () => {
+  it("rejects an actor missing dialogueId", () => {
     const invalid: Record<string, unknown> = { ...validActor };
-    delete invalid.initialDialogue;
+    delete invalid.dialogueId;
     expect(ActorSchema.safeParse(invalid).success).toBe(false);
   });
 });
@@ -109,5 +111,57 @@ describe("EndeavorSchema", () => {
       },
     };
     expect(EndeavorSchema.safeParse(invalid).success).toBe(false);
+  });
+});
+
+describe("DialogueSchema", () => {
+  it("accepts the starter dialogue fixture", () => {
+    expect(DialogueSchema.safeParse(validDialogue).success).toBe(true);
+  });
+
+  it("rejects a dialogue missing startNodeId", () => {
+    const invalid: Record<string, unknown> = { ...validDialogue };
+    delete invalid.startNodeId;
+    expect(DialogueSchema.safeParse(invalid).success).toBe(false);
+  });
+
+  it("rejects a choice command with an unknown command type", () => {
+    const invalid = {
+      ...validDialogue,
+      nodes: {
+        ...validDialogue.nodes,
+        node_greeting: {
+          ...validDialogue.nodes.node_greeting,
+          choices: [
+            {
+              id: "choice_bad",
+              text: "bad",
+              commands: [{ type: "COMMAND_DOES_NOT_EXIST", payload: {} }],
+            },
+          ],
+        },
+      },
+    };
+    expect(DialogueSchema.safeParse(invalid).success).toBe(false);
+  });
+
+  it("rejects a command payload with an unexpected extra key (.strict())", () => {
+    const invalid = {
+      ...validDialogue,
+      nodes: {
+        ...validDialogue.nodes,
+        node_greeting: {
+          ...validDialogue.nodes.node_greeting,
+          choices: [
+            {
+              id: "choice_bad",
+              text: "bad",
+              commands: [{ type: "COMMAND_ADVANCE_SHIFT", payload: { unexpectedKey: true } }],
+            },
+          ],
+        },
+      },
+    };
+    expect(DialogueSchema.safeParse(invalid).success).toBe(false);
   });
 });

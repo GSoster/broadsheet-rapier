@@ -45,11 +45,22 @@ export type CommandType =
   | 'COMMAND_START_MINIGAME'
   | 'COMMAND_RESOLVE_MINIGAME'
   | 'COMMAND_CANCEL_MINIGAME'
+  | 'COMMAND_ENTER_DIALOGUE_NODE'
+  | 'COMMAND_SELECT_DIALOGUE_CHOICE'
   | 'COMMAND_NEXT_DAY';
 
 export interface StateCommand<T = Record<string, unknown>> {
   type: CommandType;
   payload: T;
+}
+
+// Gates a dialogue choice's availability against PlayerState.
+export interface DialogueRequirement {
+  requiredClues?: string[];
+  minActorReputation?: { actorId: string; value: number };
+  minFactionReputation?: { factionId: string; value: number };
+  allowedShifts?: Shift[];
+  nodeVisits?: { nodeId?: string; min?: number; max?: number };
 }
 
 export type MinigameType = 'DUEL' | 'LOCKPICKING' | 'FISHING' | 'DICE';
@@ -84,14 +95,19 @@ export interface PlayerState {
   unlockedClues: string[];
   activeEndeavors: Record<string, { currentPhaseId: string; logHistory: string[] }>;
   activeMinigame: MinigameLauncherPayload | null;
+  dialogueProgress: Record<string, { currentNodeId: string; visitCounts: Record<string, number> }>;
 }
 ```
+
+`StateCommandSchema` (the Zod counterpart of `StateCommand`, in the same file) is a `.strict()` discriminated union keyed on `type` — one payload schema per command, so a malformed or extra-keyed content-authored command payload (a dialogue choice's `commands`, a minigame's `onSuccessCommands`/`onFailureCommands`) fails validation instead of silently passing `z.record(z.string(), z.unknown())`. It deliberately excludes `COMMAND_NEXT_DAY` (see above) — content JSON can never construct one. This only validates at test/CI time (`content-integrity.test.ts`, `schemas.test.ts`) and on save-file import (`parseAndValidateSave`); `dispatchCommand`'s input at the `playerStore.ts` boundary stays unvalidated at runtime, same as before this schema existed.
 
 `COMMAND_NEXT_DAY` is **internal-only**: dispatched automatically inside the `COMMAND_ADVANCE_SHIFT` handler when `NIGHT` rolls over. It is never dispatched directly by the UI, and no UI element should expose it as an action. The store enforces this structurally, not just by convention: the day-rollover logic lives in a private function called directly by the `COMMAND_ADVANCE_SHIFT` handler, and dispatching `COMMAND_NEXT_DAY` on its own throws.
 
 `COMMAND_ADJUST_CURRENCY` auto-normalizes the result after every adjustment: bronze carries into silver, silver carries into gold, at the stated 20:20 ratio (`game-design-spec.md` §5). It also borrows down in the other direction — a loss that exceeds the bronze on hand breaks silver (and, through silver, gold) down into bronze as needed — and enforces a hard floor: total value (converted to a single bronze-equivalent figure, adjusted, then re-split into gold/silver/bronze) can never go negative; a loss exceeding total holdings clamps to zero. This is a store-level guarantee (`applyCommand`), not a UI-layer convention — UI should still disable actions the player can't afford, but the store doesn't trust it to.
 
 `worldClock.weather` is display-only scaffolding added to satisfy `WorldClockHud`'s Phase 6 requirement to show a weather indicator (`execution-plan.md` Phase 6). `game-design-spec.md` §4 says weather is tracked but doesn't define its representation or how it changes. No `CommandType` sets it yet — it stays at its initial value (`CLEAR`) until a weather-progression mechanic is actually specified. Do not add weather-driven gameplay effects (visibility, encounter odds, etc.) without a spec for them first.
+
+`COMMAND_ENTER_DIALOGUE_NODE` and `COMMAND_SELECT_DIALOGUE_CHOICE` resolve `game-design-spec.md` Open Design Gap #6 (dialogue branching/variation). `COMMAND_ENTER_DIALOGUE_NODE` is pure bookkeeping — opening or resuming a conversation, incrementing `dialogueProgress[dialogueId].visitCounts[nodeId]` — and carries no `commands` field in its payload, so it cannot have side effects by construction. `COMMAND_SELECT_DIALOGUE_CHOICE` always carries a `commands: StateCommand[]` (possibly empty) and a nullable `nextNodeId` (`null` means the choice ends the conversation); it's dispatched unconditionally on every choice click, the same way `COMMAND_CANCEL_MINIGAME` is dispatched unconditionally for a no-consequence "Leave." See `src/engine/utils/evaluator.ts`'s `evaluateDialogueRequirement(playerState, requirement, currentNodeId, dialogueId)` for how a choice's `requires: DialogueRequirement` is evaluated — unavailable choices are rendered disabled, not filtered out, matching the existing `NodeInteractionAction` pattern below.
 
 ## 5. Content Schema Field Reference (Zod)
 
@@ -102,10 +118,13 @@ Concrete field types, matching `game-design-spec.md` §8:
 - **POI** additionally: `districtId: string`, `costShifts: number` (default 0), `availableShifts: Shift[]`, `actorIds: string[]`.
 - **District** additionally: `settlementId: string`, `poiIds: string[]`.
 - **Settlement** additionally: `districtIds: string[]`.
-- **Actor** additionally: `poiId: string`, `factionIds: string[]` (default `[]`), `title: string`, `initialDialogue: string`.
+- **Actor** additionally: `poiId: string`, `factionIds: string[]` (default `[]`), `title: string`, `dialogueId: string` (points at a `Dialogue` content file's `id`; breaking-changed from a plain `initialDialogue: string` when dialogue branching was implemented — see below).
 - **Faction**: base fields only.
 - **Endeavor**: `id`, `title`, `description`, `isUnlocked`, `initialPhaseId`, `phases: Record<string, EndeavorPhase>`.
 - **EndeavorPhase**: `id`, `objectiveText`, `requiredClues?: string[]`, `nextPhaseOnSuccess?: string`, `unlocksNodesOnComplete: string[]`.
+- **Dialogue**: `id`, `startNodeId: string`, `nodes: Record<string, DialogueNode>`.
+- **DialogueNode**: `id`, `speaker: string`, `text: string`, `choices: DialogueChoice[]` (default `[]`).
+- **DialogueChoice**: `id`, `text: string`, `nextNodeId?: string` (omitted means this choice ends the conversation), `requires?: DialogueRequirement`, `commands: StateCommand[]` (default `[]`).
 
 Schemas live in `src/content/schemas/`. All content JSON under `src/content/` must validate against its corresponding schema. Territory has no schema — deferred per `game-design-spec.md` §2.
 
@@ -124,11 +143,13 @@ src/
     store/{playerStore.ts, commands.ts, events.ts}
     minigames/{dice.ts, index.ts}
     audio/{playSound.ts}
-    components/{WorldClockHud.tsx, WorldNavigationView.tsx, NodeInteractionCanvas.tsx, ManagementDrawer.tsx, AssetFallback.tsx, MinigameOverlay.tsx, minigames/DiceGame.tsx}
+    utils/{evaluator.ts}
+    components/{WorldClockHud.tsx, WorldNavigationView.tsx, NodeInteractionCanvas.tsx, ManagementDrawer.tsx, AssetFallback.tsx, MinigameOverlay.tsx, DialogueOverlay.tsx, minigames/DiceGame.tsx}
   content/
-    schemas/{shared.ts, settlement.schema.ts, district.schema.ts, poi.schema.ts, actor.schema.ts, faction.schema.ts, endeavor.schema.ts}
-    settlements/ districts/ pois/ actors/ factions/ endeavors/
-  __tests__/{schemas.test.ts, content-integrity.test.ts, playerStore.test.ts, persistence.test.ts, commands.test.ts, minigames.test.ts, dice.test.ts, playSound.test.ts, components/, setup/}
+    schemas/{shared.ts, settlement.schema.ts, district.schema.ts, poi.schema.ts, actor.schema.ts, faction.schema.ts, endeavor.schema.ts, dialogue.schema.ts}
+    settlements/ districts/ pois/ actors/ factions/ endeavors/ dialogues/
+  dialogueResolution.ts
+  __tests__/{schemas.test.ts, content-integrity.test.ts, playerStore.test.ts, persistence.test.ts, commands.test.ts, minigames.test.ts, dice.test.ts, playSound.test.ts, evaluator.test.ts, resolveDialogueEntryNodeId.test.ts, components/, setup/}
 public/
   content/assets/{images/districts, images/pois, images/actors, audio}/
 ```
