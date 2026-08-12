@@ -1,4 +1,5 @@
 import { z } from "zod";
+import type { DistanceState } from "../minigames/duel";
 
 export type CommandType =
   | "COMMAND_ADVANCE_SHIFT"
@@ -36,15 +37,47 @@ export type Season = (typeof SEASONS)[number];
 export const WEATHERS = ["CLEAR", "RAIN", "FOG", "STORM"] as const;
 export type Weather = (typeof WEATHERS)[number];
 
-export interface MinigameLauncherPayload {
-  type: MinigameType;
-  sourceId: string;
-  // Placeholder shape pending the minigame-mechanics spec (game-design-spec.md Open Design Gaps).
-  // Once mechanics are defined, this should become a discriminated union keyed off `type`.
-  config: Record<string, unknown>;
-  onSuccessCommands: StateCommand[];
-  onFailureCommands: StateCommand[];
+// DistanceState is re-exported from the duel resolver (its natural home,
+// mirroring dice.ts owning its own types) rather than duplicated here.
+export type { DistanceState };
+
+export interface DiceConfig {
+  wager: number;
 }
+
+export interface DuelConfig {
+  opponentId: string;
+  opponentName: string;
+  opponentStartingEnergy: number;
+  opponentStartingPoise: number;
+  startingDistance?: DistanceState; // default OUT_OF_MEASURE if omitted
+}
+
+// A discriminated union keyed on `type` — DICE and DUEL now have real
+// per-type config shapes; LOCKPICKING/FISHING keep the untyped bag until
+// their mechanics are defined (game-design-spec.md Open Design Gaps, item 1).
+export type MinigameLauncherPayload =
+  | {
+      type: "DICE";
+      sourceId: string;
+      config: DiceConfig;
+      onSuccessCommands: StateCommand[];
+      onFailureCommands: StateCommand[];
+    }
+  | {
+      type: "DUEL";
+      sourceId: string;
+      config: DuelConfig;
+      onSuccessCommands: StateCommand[];
+      onFailureCommands: StateCommand[];
+    }
+  | {
+      type: "LOCKPICKING" | "FISHING";
+      sourceId: string;
+      config: Record<string, unknown>;
+      onSuccessCommands: StateCommand[];
+      onFailureCommands: StateCommand[];
+    };
 
 // Gates a dialogue choice's availability against PlayerState. `nodeVisits.nodeId`
 // omitted means "the node this requirement is attached to" — see the evaluator
@@ -196,13 +229,41 @@ export const StateCommandSchema: z.ZodType<StateCommand<any>> = z.discriminatedU
   }),
 ]);
 
-const MinigameLauncherPayloadSchema: z.ZodType<MinigameLauncherPayload> = z.object({
-  type: z.enum(["DUEL", "LOCKPICKING", "FISHING", "DICE"]),
-  sourceId: z.string(),
-  config: z.record(z.string(), z.unknown()),
-  onSuccessCommands: z.lazy(() => z.array(StateCommandSchema)),
-  onFailureCommands: z.lazy(() => z.array(StateCommandSchema)),
-});
+const DiceConfigSchema = z.object({ wager: z.number() }).strict();
+
+const DuelConfigSchema = z
+  .object({
+    opponentId: z.string(),
+    opponentName: z.string(),
+    opponentStartingEnergy: z.number(),
+    opponentStartingPoise: z.number(),
+    startingDistance: z.enum(["OUT_OF_MEASURE", "IN_MEASURE", "CLOSE_QUARTERS"]).optional(),
+  })
+  .strict();
+
+const MinigameLauncherPayloadSchema: z.ZodType<MinigameLauncherPayload> = z.discriminatedUnion("type", [
+  z.object({
+    type: z.literal("DICE"),
+    sourceId: z.string(),
+    config: DiceConfigSchema,
+    onSuccessCommands: z.lazy(() => z.array(StateCommandSchema)),
+    onFailureCommands: z.lazy(() => z.array(StateCommandSchema)),
+  }),
+  z.object({
+    type: z.literal("DUEL"),
+    sourceId: z.string(),
+    config: DuelConfigSchema,
+    onSuccessCommands: z.lazy(() => z.array(StateCommandSchema)),
+    onFailureCommands: z.lazy(() => z.array(StateCommandSchema)),
+  }),
+  z.object({
+    type: z.enum(["LOCKPICKING", "FISHING"]),
+    sourceId: z.string(),
+    config: z.record(z.string(), z.unknown()),
+    onSuccessCommands: z.lazy(() => z.array(StateCommandSchema)),
+    onFailureCommands: z.lazy(() => z.array(StateCommandSchema)),
+  }),
+]);
 
 export const PlayerStateSchema: z.ZodType<PlayerState> = z.object({
   currencies: z.object({

@@ -7,6 +7,7 @@ import { ActorSchema } from "../content/schemas/actor.schema";
 import { FactionSchema } from "../content/schemas/faction.schema";
 import { EndeavorSchema } from "../content/schemas/endeavor.schema";
 import { DialogueSchema } from "../content/schemas/dialogue.schema";
+import { ItemSchema } from "../content/schemas/item.schema";
 
 // Every real content file under src/content/ must validate against its
 // schema — enumerated via import.meta.glob so this scales automatically as
@@ -42,6 +43,7 @@ const contentGroups: Array<{ label: string; schema: z.ZodType; files: Record<str
     schema: DialogueSchema,
     files: import.meta.glob("../content/dialogues/*.json", { eager: true }),
   },
+  { label: "items", schema: ItemSchema, files: import.meta.glob("../content/items/*.json", { eager: true }) },
 ];
 
 describe("content integrity: every file under src/content/ validates against its schema", () => {

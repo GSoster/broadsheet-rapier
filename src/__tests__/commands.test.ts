@@ -251,7 +251,7 @@ describe("COMMAND_MOVE_TO_POI", () => {
 
 describe("COMMAND_ADD_ITEM / COMMAND_REMOVE_ITEM", () => {
   it("adds a new item and increases quantity on repeat adds", () => {
-    let state = makeState();
+    let state = makeState({ inventory: [] });
     state = applyCommand(state, {
       type: "COMMAND_ADD_ITEM",
       payload: { itemId: "item_lockpick", quantity: 1 },

@@ -65,13 +65,25 @@ export interface DialogueRequirement {
 
 export type MinigameType = 'DUEL' | 'LOCKPICKING' | 'FISHING' | 'DICE';
 
-export interface MinigameLauncherPayload {
-  type: MinigameType;
-  sourceId: string;
-  config: Record<string, unknown>;
-  onSuccessCommands: StateCommand[];
-  onFailureCommands: StateCommand[];
+export interface DiceConfig {
+  wager: number;
 }
+
+export interface DuelConfig {
+  opponentId: string;
+  opponentName: string;
+  opponentStartingEnergy: number;
+  opponentStartingPoise: number;
+  startingDistance?: DistanceState; // default OUT_OF_MEASURE if omitted
+}
+
+// A discriminated union keyed on `type` — DICE and DUEL now have real
+// per-type config shapes; LOCKPICKING/FISHING keep the untyped bag until
+// their mechanics are defined (game-design-spec.md § Open Design Gaps, item 1).
+export type MinigameLauncherPayload =
+  | { type: 'DICE'; sourceId: string; config: DiceConfig; onSuccessCommands: StateCommand[]; onFailureCommands: StateCommand[] }
+  | { type: 'DUEL'; sourceId: string; config: DuelConfig; onSuccessCommands: StateCommand[]; onFailureCommands: StateCommand[] }
+  | { type: 'LOCKPICKING' | 'FISHING'; sourceId: string; config: Record<string, unknown>; onSuccessCommands: StateCommand[]; onFailureCommands: StateCommand[] };
 
 export interface PlayerState {
   currencies: { gold: number; silver: number; bronze: number };
@@ -125,6 +137,7 @@ Concrete field types, matching `game-design-spec.md` §8:
 - **Dialogue**: `id`, `startNodeId: string`, `nodes: Record<string, DialogueNode>`.
 - **DialogueNode**: `id`, `speaker: string`, `text: string`, `choices: DialogueChoice[]` (default `[]`).
 - **DialogueChoice**: `id`, `text: string`, `nextNodeId?: string` (omitted means this choice ends the conversation), `requires?: DialogueRequirement`, `commands: StateCommand[]` (default `[]`).
+- **Item**: base node fields, but with `imageAsset: string` **required** (not optional) — an Item always needs a visible representation, unlike every other node type — plus `stackable: boolean`. No enforcement of `stackable` anywhere yet (`game-design-spec.md` Open Design Gap #12); it's a schema-level distinction only. `item_rapier` is the one instance so far.
 
 Schemas live in `src/content/schemas/`. All content JSON under `src/content/` must validate against its corresponding schema. Territory has no schema — deferred per `game-design-spec.md` §2.
 
@@ -141,20 +154,20 @@ src/
   engine/
     types/index.ts
     store/{playerStore.ts, commands.ts, events.ts}
-    minigames/{dice.ts, index.ts}
+    minigames/{dice.ts, duel.ts, index.ts}
     audio/{playSound.ts}
     utils/{evaluator.ts}
-    components/{WorldClockHud.tsx, WorldNavigationView.tsx, NodeInteractionCanvas.tsx, ManagementDrawer.tsx, AssetFallback.tsx, MinigameOverlay.tsx, DialogueOverlay.tsx, minigames/DiceGame.tsx}
+    components/{WorldClockHud.tsx, WorldNavigationView.tsx, NodeInteractionCanvas.tsx, ManagementDrawer.tsx, AssetFallback.tsx, MinigameOverlay.tsx, DialogueOverlay.tsx, minigames/{DiceGame.tsx, DuelGame.tsx}}
   content/
-    schemas/{shared.ts, settlement.schema.ts, district.schema.ts, poi.schema.ts, actor.schema.ts, faction.schema.ts, endeavor.schema.ts, dialogue.schema.ts}
-    settlements/ districts/ pois/ actors/ factions/ endeavors/ dialogues/
+    schemas/{shared.ts, settlement.schema.ts, district.schema.ts, poi.schema.ts, actor.schema.ts, faction.schema.ts, endeavor.schema.ts, dialogue.schema.ts, item.schema.ts}
+    settlements/ districts/ pois/ actors/ factions/ endeavors/ dialogues/ items/
   dialogueResolution.ts
-  __tests__/{schemas.test.ts, content-integrity.test.ts, playerStore.test.ts, persistence.test.ts, commands.test.ts, minigames.test.ts, dice.test.ts, playSound.test.ts, evaluator.test.ts, resolveDialogueEntryNodeId.test.ts, components/, setup/}
+  __tests__/{schemas.test.ts, content-integrity.test.ts, playerStore.test.ts, persistence.test.ts, commands.test.ts, minigames.test.ts, dice.test.ts, duel.test.ts, playSound.test.ts, evaluator.test.ts, resolveDialogueEntryNodeId.test.ts, components/, setup/}
 public/
   content/assets/{images/districts, images/pois, images/actors, audio}/
 ```
 
-`minigames/` only has files for types with a defined mechanic (`dice.ts`) plus the `index.ts` registry — `duel.ts`, `lockpicking.ts`, and `fishing.ts` don't exist yet and shouldn't be stubbed out ahead of their specs (`game-design-spec.md` § Open Design Gaps, item 1). Same reasoning for `components/minigames/`: only `DiceGame.tsx` exists; other minigame types get their own UI component once their mechanic is specified.
+`minigames/` only has files for types with a defined mechanic (`dice.ts`, `duel.ts`) plus the `index.ts` registry — `lockpicking.ts` and `fishing.ts` don't exist yet and shouldn't be stubbed out ahead of their specs (`game-design-spec.md` § Open Design Gaps, item 1). Same reasoning for `components/minigames/`: only `DiceGame.tsx`/`DuelGame.tsx` exist; the other two minigame types get their own UI component once their mechanic is specified.
 
 `src/content/` uses categorized subfolders per node type, not a flat directory.
 
@@ -185,7 +198,7 @@ public/
 
 - Minigames are stateless runners in `src/engine/minigames/`, one file per `MinigameType`, registered in an `index.ts` lookup keyed by type (`minigameResolvers`).
 - Launched via `COMMAND_START_MINIGAME(payload)`. Resolved via `COMMAND_RESOLVE_MINIGAME(isVictory)`, which dispatches the payload's `onSuccessCommands` or `onFailureCommands`.
-- This section defines the plumbing contract; `DUEL`/`LOCKPICKING`/`FISHING` mechanics remain an open design gap — see `game-design-spec.md` §9 and § Open Design Gaps.
+- This section defines the plumbing contract; `LOCKPICKING`/`FISHING` mechanics remain an open design gap — see `game-design-spec.md` §9 and § Open Design Gaps.
 
 ### DICE (implemented)
 
@@ -194,4 +207,14 @@ public/
 - UI: `src/engine/components/minigames/DiceGame.tsx`. Reads/dispatches the store directly (like `WorldClockHud`/`ManagementDrawer`/`MinigameOverlay` — it's player-state-native, not content-derived, so it doesn't need props-only decoupling). Interaction is a single click on "Throw" — no press-and-hold charge mechanic (deferred, `game-design-spec.md` § Open Design Gaps item 8).
 - **Wager stays in sync with `activeMinigame` via re-dispatching `COMMAND_START_MINIGAME`.** Since the wager is chosen *after* the minigame is launched (the player can still be adjusting the stepper), and `onSuccessCommands`/`onFailureCommands` must already contain the correct `COMMAND_ADJUST_CURRENCY` amount by the time `COMMAND_RESOLVE_MINIGAME` fires, `DiceGame` re-dispatches `COMMAND_START_MINIGAME` with a freshly-baked payload (`config.wager` plus matching `onSuccessCommands`/`onFailureCommands`) on every stepper click, and once defensively on mount. `COMMAND_RESOLVE_MINIGAME` itself never needed to change — it already dispatches whichever fixed command list matches the roll outcome, per the existing contract.
 - **`COMMAND_CANCEL_MINIGAME`**: clears `activeMinigame` with no consequence — neither `onSuccessCommands` nor `onFailureCommands` run. `DiceGame`'s "Leave" button (visible whenever the player hasn't just thrown — including when they can't afford `MIN_WAGER`) dispatches it. Added because `COMMAND_RESOLVE_MINIGAME` always applies one side or the other; there was no existing way to back out of a launched minigame without a win/lose consequence, which meant a player with too little to afford even the minimum wager had no way to close the modal at all.
-- `MinigameOverlay` routes by `activeMinigame.type`: `DICE` renders `DiceGame`; every other type still renders the original generic Victory/Defeat shell (unimplemented mechanics stay unimplemented, not silently faked).
+- `MinigameOverlay` routes by `activeMinigame.type`: `DICE` renders `DiceGame`, `DUEL` renders `DuelGame`; every other type still renders the original generic Victory/Defeat shell (unimplemented mechanics stay unimplemented, not silently faked).
+
+### DUEL (implemented)
+
+- Pure resolution logic in `src/engine/minigames/duel.ts`: `evaluateDuelTurn(context: DuelContext, playerAction: DuelAction, opponentAction: DuelAction)` resolves one turn deterministically (no RNG); `chooseOpponentAction(context: DuelContext, random?: RandomSource)` picks the opponent's action via fixed heuristics, using an injectable RNG only for its fallback tie-break — same `RandomSource = () => number` pattern as `dice.ts`.
+- `DuelContext` bundles `player`/`opponent` (`{ energy: number; poise: number }`), a three-step `distance: DistanceState` (`OUT_OF_MEASURE | IN_MEASURE | CLOSE_QUARTERS`), `lastPlayerAction: DuelAction | null`, and `playerReputation` (a snapshot of `PlayerState.reputation`, same shape) — deliberately a single extensible context object, not positional parameters, so later additions (equipped weapon, etc.) don't change either function's signature (`game-design-spec.md` § Open Design Gaps, item 11).
+- Five `DuelAction`s: `THRUST` (energy damage, requires `IN_MEASURE`), `PARRY_RIPOSTE` (negates and counters a matching `THRUST`/`DIRTY_TRICK` this turn), `FEINT` (poise drain + shifts distance one step toward `CLOSE_QUARTERS`), `TAUNT` (poise drain, with a bonus gated on the player's `faction_wagering_ring` reputation — a hand-authored worked example, not a general system), `DIRTY_TRICK` (energy + poise damage, requires `CLOSE_QUARTERS`). A combatant whose poise is already 0 at the start of the turn takes bonus "guard-break" damage from a landed `THRUST`/`DIRTY_TRICK`. All constants (`THRUST_DAMAGE`, `RIPOSTE_COUNTER_DAMAGE`, `FEINT_POISE_DRAIN`, `DIRTY_TRICK_DAMAGE`/`_POISE_DRAIN`, `TAUNT_POISE_DRAIN_BASE`/`_REPUTATION_BONUS`/`_REPUTATION_THRESHOLD`, `GUARD_BREAK_BONUS_DAMAGE`, `OPPONENT_LOW_POISE_THRESHOLD`/`_HEALTHY_ENERGY_THRESHOLD`, `PLAYER_STARTING_ENERGY`/`_POISE`) are placeholder/first-mechanic numbers, same treatment as `dice.ts`'s wager constants — see `docs/features/feature_rapier_duel.md`.
+- The duel ends only on `energy <= 0` (`PLAYER_VICTORY`/`PLAYER_DEFEAT`); poise never ends it by itself, it only feeds `chooseOpponentAction` and the UI.
+- `DuelConfig` (the opponent's launch parameters — `opponentId`, `opponentName`, `opponentStartingEnergy`, `opponentStartingPoise`, optional `startingDistance`) is authored per encounter; the player's own starting `energy`/`poise` are a fixed 100/100 owned by `DuelGame.tsx` itself, not `PlayerState`-derived or per-encounter-configurable this phase.
+- UI: `src/engine/components/minigames/DuelGame.tsx`, mirroring `DiceGame.tsx`'s pattern — session-local phase state (`choosing` → `resolving` → looping until `outcome !== "ONGOING"` → `result`), injectable `random`/`playSound` props, a turn log, action buttons disabled per current distance-legality, "Collect" dispatching `COMMAND_RESOLVE_MINIGAME`, "Leave" dispatching `COMMAND_CANCEL_MINIGAME` at any point before result.
+- **No in-content trigger exists yet** — nothing in `App.tsx` or any content JSON dispatches `COMMAND_START_MINIGAME` with `type: "DUEL"` this phase. Engine-only; see `docs/features/feature_rapier_duel.md`'s Reachability section.

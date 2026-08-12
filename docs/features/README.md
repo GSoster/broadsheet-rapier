@@ -7,6 +7,7 @@ One file per feature/content spec, per `docs/feature-workflow.md`. Filenames pre
 | [feature_dice_minigame.md](feature_dice_minigame.md) | Feature | Implemented | 2d6 even/odd dice minigame, currency borrow-down, Mara Venn reputation loop. Backfilled. |
 | [feature_audio_system.md](feature_audio_system.md) | Feature | Implemented | Fail-silent `playSound` utility; dice win/lose SFX; content-driven `entrySoundAsset`. Backfilled. |
 | [feature_dialogue_branching.md](feature_dialogue_branching.md) | Feature | Implemented | Branching dialogue schema/engine, `.strict()` discriminated-union `StateCommandSchema`, `COMMAND_ENTER_DIALOGUE_NODE`/`COMMAND_SELECT_DIALOGUE_CHOICE`, Mara Venn's dialogue tree replacing her hardcoded reputation logic. |
+| [feature_rapier_duel.md](feature_rapier_duel.md) | Feature | Implemented | Turn-based `DUEL` minigame mechanic (energy/poise/distance, 5 actions, guard-break bonus), discriminated `MinigameLauncherPayload.config`, `item_rapier` starter item. Engine-only, no in-content trigger yet. |
 
 ## Other notable process/tooling findings
 

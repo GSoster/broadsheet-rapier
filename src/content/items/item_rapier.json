@@ -1,0 +1,8 @@
+{
+  "id": "item_rapier",
+  "name": "Rapier",
+  "description": "A well-balanced dueling blade — plain, honest steel, kept sharp out of habit rather than expectation of use.",
+  "isUnlocked": true,
+  "imageAsset": "/content/assets/images/items/rapier.webp",
+  "stackable": false
+}

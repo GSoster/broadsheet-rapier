@@ -6,6 +6,7 @@ import { ActorSchema } from "../content/schemas/actor.schema";
 import { FactionSchema } from "../content/schemas/faction.schema";
 import { EndeavorSchema } from "../content/schemas/endeavor.schema";
 import { DialogueSchema } from "../content/schemas/dialogue.schema";
+import { ItemSchema } from "../content/schemas/item.schema";
 
 import validSettlement from "../content/settlements/settlement_valdeombra_city.json";
 import validDistrict from "../content/districts/district_lantern_ward.json";
@@ -14,6 +15,7 @@ import validActor from "../content/actors/actor_mara_venn.json";
 import validFaction from "../content/factions/faction_city_watch.json";
 import validEndeavor from "../content/endeavors/endeavor_the_missing_broadsheet.json";
 import validDialogue from "../content/dialogues/dialogue_mara_venn.json";
+import validItem from "../content/items/item_rapier.json";
 
 describe("SettlementSchema", () => {
   it("accepts the starter settlement fixture", () => {
@@ -163,5 +165,23 @@ describe("DialogueSchema", () => {
       },
     };
     expect(DialogueSchema.safeParse(invalid).success).toBe(false);
+  });
+});
+
+describe("ItemSchema", () => {
+  it("accepts the starter item fixture", () => {
+    expect(ItemSchema.safeParse(validItem).success).toBe(true);
+  });
+
+  it("rejects an item missing imageAsset (required here, unlike the base schema)", () => {
+    const invalid: Record<string, unknown> = { ...validItem };
+    delete invalid.imageAsset;
+    expect(ItemSchema.safeParse(invalid).success).toBe(false);
+  });
+
+  it("rejects an item missing stackable", () => {
+    const invalid: Record<string, unknown> = { ...validItem };
+    delete invalid.stackable;
+    expect(ItemSchema.safeParse(invalid).success).toBe(false);
   });
 });

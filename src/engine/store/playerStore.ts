@@ -13,7 +13,10 @@ export const initialPlayerState: PlayerState = {
   worldClock: { shift: "MORNING", day: 1, season: "SPRING", weather: "CLEAR" },
   currentLocation: { settlementId: "", districtId: "" },
   reputation: { factions: {}, actors: {} },
-  inventory: [],
+  // Starter rapier — flavor/inventory-only this phase, doesn't gate Thrust or
+  // any other duel action, and poise is not yet derived from it (see
+  // game-design-spec.md § Open Design Gaps, item 11).
+  inventory: [{ itemId: "item_rapier", quantity: 1 }],
   unlockedNodes: {},
   unlockedClues: [],
   activeEndeavors: {},

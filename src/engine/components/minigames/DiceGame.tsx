@@ -82,7 +82,7 @@ export function DiceGame({ sourceId, random, playSound: playSoundProp = playSoun
   const maxWager = maxAffordableWager(currenciesToBronzeEquivalent(currencies));
   const canAffordMinimum = maxWager >= MIN_WAGER;
   const wager = clampWager(
-    (activeMinigame?.config.wager as number | undefined) ?? 20,
+    (activeMinigame?.type === "DICE" ? activeMinigame.config.wager : undefined) ?? 20,
     currenciesToBronzeEquivalent(currencies)
   );
 

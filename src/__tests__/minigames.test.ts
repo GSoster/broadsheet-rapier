@@ -11,11 +11,16 @@ function makeMinigame(overrides: Partial<MinigameLauncherPayload> = {}): Minigam
   return {
     type: "DUEL",
     sourceId: "actor_mara_venn",
-    config: {},
+    config: {
+      opponentId: "actor_placeholder_opponent",
+      opponentName: "Placeholder Opponent",
+      opponentStartingEnergy: 100,
+      opponentStartingPoise: 100,
+    },
     onSuccessCommands: [],
     onFailureCommands: [],
     ...overrides,
-  };
+  } as MinigameLauncherPayload;
 }
 
 describe("COMMAND_START_MINIGAME", () => {

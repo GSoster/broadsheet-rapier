@@ -14,10 +14,13 @@ describe("MinigameOverlay", () => {
     expect(container).toBeEmptyDOMElement();
   });
 
+  // LOCKPICKING remains unimplemented, so these three exercise the generic
+  // fallback shell — they used to use DUEL as their placeholder type before
+  // DUEL got a real mechanic and its own overlay branch.
   it("renders the overlay with the active minigame's type once one is active", () => {
     usePlayerStore.setState({
       activeMinigame: {
-        type: "DUEL",
+        type: "LOCKPICKING",
         sourceId: "actor_mara_venn",
         config: {},
         onSuccessCommands: [],
@@ -25,13 +28,13 @@ describe("MinigameOverlay", () => {
       },
     });
     render(<MinigameOverlay />);
-    expect(screen.getByText("DUEL")).toBeInTheDocument();
+    expect(screen.getByText("LOCKPICKING")).toBeInTheDocument();
   });
 
   it("dispatches COMMAND_RESOLVE_MINIGAME with isVictory true and clears activeMinigame on victory", () => {
     usePlayerStore.setState({
       activeMinigame: {
-        type: "DUEL",
+        type: "LOCKPICKING",
         sourceId: "actor_mara_venn",
         config: {},
         onSuccessCommands: [{ type: "COMMAND_UNLOCK_NODE", payload: { nodeId: "poi_crooked_hour_tavern" } }],
@@ -48,7 +51,7 @@ describe("MinigameOverlay", () => {
   it("dispatches COMMAND_RESOLVE_MINIGAME with isVictory false on defeat", () => {
     usePlayerStore.setState({
       activeMinigame: {
-        type: "DUEL",
+        type: "LOCKPICKING",
         sourceId: "actor_mara_venn",
         config: {},
         onSuccessCommands: [],
@@ -80,6 +83,27 @@ describe("MinigameOverlay", () => {
     render(<MinigameOverlay />);
     expect(screen.getByText("Dice — Even Wins, Odd Loses")).toBeInTheDocument();
     expect(screen.queryByText("DICE")).not.toBeInTheDocument();
+    expect(screen.queryByText(/dispatch plumbing only/)).not.toBeInTheDocument();
+  });
+
+  it("renders DuelGame instead of the generic shell when the active minigame is DUEL", () => {
+    usePlayerStore.setState({
+      activeMinigame: {
+        type: "DUEL",
+        sourceId: "actor_placeholder_opponent",
+        config: {
+          opponentId: "actor_placeholder_opponent",
+          opponentName: "Placeholder Rival",
+          opponentStartingEnergy: 100,
+          opponentStartingPoise: 100,
+        },
+        onSuccessCommands: [],
+        onFailureCommands: [],
+      },
+    });
+    render(<MinigameOverlay />);
+    expect(screen.getByText("Rapier Duel — Placeholder Rival")).toBeInTheDocument();
+    expect(screen.queryByText("DUEL")).not.toBeInTheDocument();
     expect(screen.queryByText(/dispatch plumbing only/)).not.toBeInTheDocument();
   });
 });

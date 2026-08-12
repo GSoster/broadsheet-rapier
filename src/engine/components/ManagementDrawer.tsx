@@ -1,6 +1,18 @@
 import { useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { usePlayerStore } from "../store/playerStore";
+import { AssetFallback } from "./AssetFallback";
+
+// Content-derived display data, not the Item content type itself —
+// src/engine/ never imports src/content/ directly (web-implementation.md
+// §3); App.tsx resolves the full Item and passes down only what this
+// component needs to render, same pattern as NodeInteractionCanvas's
+// `actors` prop.
+export interface ItemDisplayData {
+  name: string;
+  description: string;
+  imageAsset: string;
+}
 
 type ManagementTab = "CASE_BOARD" | "ENDEAVORS" | "INVENTORY";
 
@@ -14,9 +26,10 @@ export interface ManagementDrawerProps {
   isOpen: boolean;
   onClose: () => void;
   endeavorTitles: Record<string, string>;
+  items: Record<string, ItemDisplayData>;
 }
 
-export function ManagementDrawer({ isOpen, onClose, endeavorTitles }: ManagementDrawerProps) {
+export function ManagementDrawer({ isOpen, onClose, endeavorTitles, items }: ManagementDrawerProps) {
   const [tab, setTab] = useState<ManagementTab>("CASE_BOARD");
   const [isConfirmingReset, setConfirmingReset] = useState(false);
   const unlockedClues = usePlayerStore((state) => state.unlockedClues);
@@ -82,12 +95,33 @@ export function ManagementDrawer({ isOpen, onClose, endeavorTitles }: Management
             ) : null}
             {tab === "INVENTORY" ? (
               inventory.length ? (
-                <ul className="flex flex-col gap-2">
-                  {inventory.map((item) => (
-                    <li key={item.itemId}>
-                      {item.itemId} &times;{item.quantity}
-                    </li>
-                  ))}
+                <ul className="flex flex-col gap-3">
+                  {inventory.map((item) => {
+                    const itemData = items[item.itemId];
+                    return (
+                      <li key={item.itemId} className="flex gap-3">
+                        {itemData ? (
+                          <>
+                            <AssetFallback
+                              src={itemData.imageAsset}
+                              alt={itemData.name}
+                              className="h-12 w-12 flex-none rounded object-cover"
+                            />
+                            <div>
+                              <p className="font-medium">
+                                {itemData.name} &times;{item.quantity}
+                              </p>
+                              <p className="text-indigo-400">{itemData.description}</p>
+                            </div>
+                          </>
+                        ) : (
+                          <p>
+                            {item.itemId} &times;{item.quantity}
+                          </p>
+                        )}
+                      </li>
+                    );
+                  })}
                 </ul>
               ) : (
                 <p className="text-indigo-400">Empty.</p>

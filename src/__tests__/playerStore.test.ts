@@ -12,7 +12,7 @@ describe("initial state", () => {
     expect(state.worldClock).toEqual({ shift: "MORNING", day: 1, season: "SPRING", weather: "CLEAR" });
     expect(state.currentLocation).toEqual({ settlementId: "", districtId: "" });
     expect(state.reputation).toEqual({ factions: {}, actors: {} });
-    expect(state.inventory).toEqual([]);
+    expect(state.inventory).toEqual([{ itemId: "item_rapier", quantity: 1 }]);
     expect(state.unlockedNodes).toEqual({});
     expect(state.unlockedClues).toEqual([]);
     expect(state.activeEndeavors).toEqual({});

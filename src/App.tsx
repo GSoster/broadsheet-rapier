@@ -16,12 +16,15 @@ import poiRaw from "./content/pois/poi_crooked_hour_tavern.json";
 import actorRaw from "./content/actors/actor_mara_venn.json";
 import endeavorRaw from "./content/endeavors/endeavor_the_missing_broadsheet.json";
 import dialogueMaraVennRaw from "./content/dialogues/dialogue_mara_venn.json";
+import itemRapierRaw from "./content/items/item_rapier.json";
 import { SettlementSchema } from "./content/schemas/settlement.schema";
 import { DistrictSchema } from "./content/schemas/district.schema";
 import { PoiSchema } from "./content/schemas/poi.schema";
 import { ActorSchema } from "./content/schemas/actor.schema";
 import { EndeavorSchema } from "./content/schemas/endeavor.schema";
 import { DialogueSchema } from "./content/schemas/dialogue.schema";
+import { ItemSchema } from "./content/schemas/item.schema";
+import type { ItemDisplayData } from "./engine/components/ManagementDrawer";
 import { loadContent } from "./contentLoader";
 import { resolveDialogueEntryNodeId } from "./dialogueResolution";
 
@@ -34,11 +37,19 @@ const poi = loadContent(PoiSchema, poiRaw, "poi_crooked_hour_tavern");
 const actor = loadContent(ActorSchema, actorRaw, "actor_mara_venn");
 const endeavor = loadContent(EndeavorSchema, endeavorRaw, "endeavor_the_missing_broadsheet");
 const dialogueMaraVenn = loadContent(DialogueSchema, dialogueMaraVennRaw, "dialogue_mara_venn");
+const itemRapier = loadContent(ItemSchema, itemRapierRaw, "item_rapier");
 
 const pois = [poi];
 const actors = [actor];
 
 const dialogues = { [dialogueMaraVenn.id]: dialogueMaraVenn };
+const itemsById: Record<string, ItemDisplayData> = {
+  [itemRapier.id]: {
+    name: itemRapier.name,
+    description: itemRapier.description,
+    imageAsset: itemRapier.imageAsset,
+  },
+};
 
 const ENDEAVOR_ID = "endeavor_the_missing_broadsheet";
 
@@ -203,6 +214,7 @@ function App() {
         isOpen={isDrawerOpen}
         onClose={() => setDrawerOpen(false)}
         endeavorTitles={{ [endeavor.id]: endeavor.title }}
+        items={itemsById}
       />
       <MinigameOverlay />
       <DialogueOverlay

@@ -1,5 +1,6 @@
 import { usePlayerStore } from "../store/playerStore";
 import { DiceGame } from "./minigames/DiceGame";
+import { DuelGame } from "./minigames/DuelGame";
 
 export function MinigameOverlay() {
   const activeMinigame = usePlayerStore((state) => state.activeMinigame);
@@ -13,6 +14,8 @@ export function MinigameOverlay() {
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80">
       {activeMinigame.type === "DICE" ? (
         <DiceGame sourceId={activeMinigame.sourceId} />
+      ) : activeMinigame.type === "DUEL" ? (
+        <DuelGame sourceId={activeMinigame.sourceId} />
       ) : (
         <div className="flex w-full max-w-md flex-col gap-4 rounded border border-indigo-800 bg-neutral-950 p-6 text-indigo-100">
           <p className="text-xs uppercase tracking-wide text-indigo-400">{activeMinigame.type}</p>
