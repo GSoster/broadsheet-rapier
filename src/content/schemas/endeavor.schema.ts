@@ -6,6 +6,17 @@ export const EndeavorPhaseSchema = z.object({
   requiredClues: z.array(z.string()).optional(),
   nextPhaseOnSuccess: z.string().optional(),
   unlocksNodesOnComplete: z.array(z.string()),
+  // Auto-opens a dialogue when the player enters poiId while this phase is
+  // active — see docs/features/feature_dialogue_visibility_and_auto_triggers.md.
+  // nodeId omitted means resolveDialogueEntryNodeId's normal resume/start logic.
+  autoDialogueOnEnter: z
+    .object({
+      poiId: z.string(),
+      dialogueId: z.string(),
+      nodeId: z.string().optional(),
+    })
+    .strict()
+    .optional(),
 });
 export type EndeavorPhase = z.infer<typeof EndeavorPhaseSchema>;
 

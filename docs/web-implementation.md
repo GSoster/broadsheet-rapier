@@ -22,7 +22,7 @@ React 18+, TypeScript (strict mode), Vite, Tailwind CSS v4, Zustand, Framer Moti
 - **Content-derived component props:** the same decoupling applies to `src/engine/components/`. Components take fully-resolved data as props (names, descriptions, unlock flags, actor lists) rather than importing `src/content/` themselves. Only `src/App.tsx` — which lives outside `src/engine/` — is allowed to import content JSON directly; it resolves the current settlement/district/POI/actors and passes the results down as props. This is the same pattern as content-derived command payloads, applied to rendering instead of dispatch.
 - **A terminal Endeavor phase (no `nextPhaseOnSuccess`) needs no separate "complete" tracking — reaching it is the representation.** `endeavor_the_missing_broadsheet`'s "Pay off the buyer" action (visible while `activeEndeavors[id].currentPhaseId === 'phase_confront_the_buyer'`) dispatches only the `COMMAND_ADJUST_CURRENCY` cost, nothing else — no new command, no schema field, no clue repurposed as a completion flag. Deliberate trade-off: the action has no persisted one-time gate, so it stays clickable (and re-payable) for as long as the player is in that phase — same category of accepted simplicity as the no-anti-grinding reputation gap (`game-design-spec.md` § Open Design Gaps).
 - **POI-level actions (Gamble, Pay off the buyer, ...) are a generic `actions?: NodeInteractionAction[]` prop on `NodeInteractionCanvas`** (`{ id, label, disabled?, onClick }`), not hardcoded into the component. `App.tsx` builds the list per-POI (e.g. only at `poi_crooked_hour_tavern`) and owns the business logic each action triggers (dispatching `COMMAND_START_MINIGAME`, `COMMAND_ADJUST_CURRENCY`, etc.) — same content-derived-props pattern as everything else `NodeInteractionCanvas` renders.
-- **Ephemeral UI selection state stays local, not in `PlayerState`.** Which actor's dialogue is currently showing inside `NodeInteractionCanvas` is `useState` in `App.tsx`, not a store field — it's view state, not save data. `currentLocation.poiId` (in `PlayerState`, persisted) is what actually drives the `WorldNavigationView` / `NodeInteractionCanvas` viewport swap: entering a POI dispatches `COMMAND_MOVE_TO_POI`, leaving one reuses `COMMAND_MOVE_TO_DISTRICT` (already 0-cost) with the current `districtId` to clear `poiId` — no new command was added for "leaving a POI."
+- **Ephemeral UI selection state stays local, not in `PlayerState` — but only when nothing outside the clicking component needs to control it.** Which actor's button is highlighted in `NodeInteractionCanvas` is `useState` (`selectedActorId`) in `App.tsx` — pure view state, not save data. Which dialogue is actually *visible*, however, is `PlayerState.activeDialogue`, not local state: an Endeavor phase or a minigame outcome can open a dialogue without any actor having been clicked (`docs/features/feature_dialogue_visibility_and_auto_triggers.md`), so visibility has to be reachable from the command-dispatch pipeline, the same reason `activeMinigame` already lives in the store. `currentLocation.poiId` (in `PlayerState`, persisted) is what actually drives the `WorldNavigationView` / `NodeInteractionCanvas` viewport swap: entering a POI dispatches `COMMAND_MOVE_TO_POI`, leaving one reuses `COMMAND_MOVE_TO_DISTRICT` (already 0-cost) with the current `districtId` to clear `poiId` — no new command was added for "leaving a POI."
 
 ## 4. Core Types
 
@@ -47,6 +47,8 @@ export type CommandType =
   | 'COMMAND_CANCEL_MINIGAME'
   | 'COMMAND_ENTER_DIALOGUE_NODE'
   | 'COMMAND_SELECT_DIALOGUE_CHOICE'
+  | 'COMMAND_OPEN_DIALOGUE'
+  | 'COMMAND_CLOSE_DIALOGUE'
   | 'COMMAND_NEXT_DAY';
 
 export interface StateCommand<T = Record<string, unknown>> {
@@ -107,6 +109,7 @@ export interface PlayerState {
   unlockedClues: string[];
   activeEndeavors: Record<string, { currentPhaseId: string; logHistory: string[] }>;
   activeMinigame: MinigameLauncherPayload | null;
+  activeDialogue: { dialogueId: string } | null;
   dialogueProgress: Record<string, { currentNodeId: string; visitCounts: Record<string, number> }>;
 }
 ```
@@ -121,6 +124,8 @@ export interface PlayerState {
 
 `COMMAND_ENTER_DIALOGUE_NODE` and `COMMAND_SELECT_DIALOGUE_CHOICE` resolve `game-design-spec.md` Open Design Gap #6 (dialogue branching/variation). `COMMAND_ENTER_DIALOGUE_NODE` is pure bookkeeping — opening or resuming a conversation, incrementing `dialogueProgress[dialogueId].visitCounts[nodeId]` — and carries no `commands` field in its payload, so it cannot have side effects by construction. `COMMAND_SELECT_DIALOGUE_CHOICE` always carries a `commands: StateCommand[]` (possibly empty) and a nullable `nextNodeId` (`null` means the choice ends the conversation); it's dispatched unconditionally on every choice click, the same way `COMMAND_CANCEL_MINIGAME` is dispatched unconditionally for a no-consequence "Leave." See `src/engine/utils/evaluator.ts`'s `evaluateDialogueRequirement(playerState, requirement, currentNodeId, dialogueId)` for how a choice's `requires: DialogueRequirement` is evaluated — unavailable choices are rendered disabled, not filtered out, matching the existing `NodeInteractionAction` pattern below.
 
+`COMMAND_OPEN_DIALOGUE`/`COMMAND_CLOSE_DIALOGUE` control `activeDialogue` — which dialogue is *visible* — kept deliberately separate from `COMMAND_ENTER_DIALOGUE_NODE`'s pure-bookkeeping contract, mirroring why `COMMAND_ENTER_DIALOGUE_NODE` and `COMMAND_SELECT_DIALOGUE_CHOICE` are already separate commands. `COMMAND_OPEN_DIALOGUE` is dispatched immediately after `COMMAND_ENTER_DIALOGUE_NODE` everywhere a dialogue opens (an actor click, an `EndeavorPhase.autoDialogueOnEnter` trigger, or a minigame's `onSuccessCommands`/`onFailureCommands` listing both in sequence). `COMMAND_CLOSE_DIALOGUE` mirrors `COMMAND_CANCEL_MINIGAME` exactly — unconditional, no guard, no consequence — dispatched from the dialogue's Close button, an ending choice, and leaving the POI mid-conversation. See `docs/features/feature_dialogue_visibility_and_auto_triggers.md`.
+
 ## 5. Content Schema Field Reference (Zod)
 
 Concrete field types, matching `game-design-spec.md` §8:
@@ -133,7 +138,7 @@ Concrete field types, matching `game-design-spec.md` §8:
 - **Actor** additionally: `poiId: string`, `factionIds: string[]` (default `[]`), `title: string`, `dialogueId: string` (points at a `Dialogue` content file's `id`; breaking-changed from a plain `initialDialogue: string` when dialogue branching was implemented — see below).
 - **Faction**: base fields only.
 - **Endeavor**: `id`, `title`, `description`, `isUnlocked`, `initialPhaseId`, `phases: Record<string, EndeavorPhase>`.
-- **EndeavorPhase**: `id`, `objectiveText`, `requiredClues?: string[]`, `nextPhaseOnSuccess?: string`, `unlocksNodesOnComplete: string[]`.
+- **EndeavorPhase**: `id`, `objectiveText`, `requiredClues?: string[]`, `nextPhaseOnSuccess?: string`, `unlocksNodesOnComplete: string[]`, `autoDialogueOnEnter?: { poiId: string; dialogueId: string; nodeId?: string }` (auto-opens a dialogue when the player enters `poiId` while this phase is active — `docs/features/feature_dialogue_visibility_and_auto_triggers.md`).
 - **Dialogue**: `id`, `startNodeId: string`, `nodes: Record<string, DialogueNode>`.
 - **DialogueNode**: `id`, `speaker: string`, `text: string`, `choices: DialogueChoice[]` (default `[]`).
 - **DialogueChoice**: `id`, `text: string`, `nextNodeId?: string` (omitted means this choice ends the conversation), `requires?: DialogueRequirement`, `commands: StateCommand[]` (default `[]`).
@@ -146,6 +151,7 @@ Schemas live in `src/content/schemas/`. All content JSON under `src/content/` mu
 - Zustand `persist` middleware, `localStorage`, key `broadsheet_rapier_player_state`.
 - `exportSave()`: downloads current `PlayerState` as a `.json` file.
 - `importSave(file)`: parses the file, validates against a `PlayerStateSchema` (structural check — required fields and correct types/enums only, no version migration logic), and rejects the import without touching current state if validation fails.
+- `persistence.test.ts` asserts the exact sorted list of keys written to `localStorage`. This is a hand-maintained list **on purpose**, not an oversight — every new `PlayerState` field must be added to it explicitly, forcing a conscious "should this actually persist?" decision at the moment the field is introduced, rather than it silently persisting (or silently not) by accident. Do not replace it with something that derives the list automatically; that would remove the check it exists to provide.
 
 ## 7. Directory Structure
 
@@ -156,13 +162,13 @@ src/
     store/{playerStore.ts, commands.ts, events.ts}
     minigames/{dice.ts, duel.ts, index.ts}
     audio/{playSound.ts}
-    utils/{evaluator.ts, resolveAssetUrl.ts}
+    utils/{evaluator.ts, resolveAssetUrl.ts, entryEffects.ts}
     components/{WorldClockHud.tsx, WorldNavigationView.tsx, NodeInteractionCanvas.tsx, ManagementDrawer.tsx, AssetFallback.tsx, MinigameOverlay.tsx, DialogueOverlay.tsx, minigames/{DiceGame.tsx, DuelGame.tsx}}
   content/
     schemas/{shared.ts, settlement.schema.ts, district.schema.ts, poi.schema.ts, actor.schema.ts, faction.schema.ts, endeavor.schema.ts, dialogue.schema.ts, item.schema.ts}
     settlements/ districts/ pois/ actors/ factions/ endeavors/ dialogues/ items/
   dialogueResolution.ts
-  __tests__/{schemas.test.ts, content-integrity.test.ts, playerStore.test.ts, persistence.test.ts, commands.test.ts, minigames.test.ts, dice.test.ts, duel.test.ts, playSound.test.ts, resolveAssetUrl.test.ts, evaluator.test.ts, resolveDialogueEntryNodeId.test.ts, components/, setup/}
+  __tests__/{schemas.test.ts, content-integrity.test.ts, playerStore.test.ts, persistence.test.ts, commands.test.ts, minigames.test.ts, dice.test.ts, duel.test.ts, playSound.test.ts, resolveAssetUrl.test.ts, entryEffects.test.ts, evaluator.test.ts, resolveDialogueEntryNodeId.test.ts, components/, setup/}
 public/
   content/assets/{images/districts, images/pois, images/actors, images/items, audio}/
 ```
@@ -192,7 +198,7 @@ public/
 - **Deliberate contrast with the visual `AssetFallback` rule above.** A missing/failed *image* must be loudly, visibly flagged (purple `MISSING` placeholder) because content authors need to catch it during development. A missing/failed *sound* must degrade silently — SFX are non-blocking and non-critical to gameplay, and an audible glitch or a thrown error would be a worse player experience than simply no sound. Same underlying "missing asset" problem, opposite resolution, because the two asset kinds have different failure costs. `game-design-spec.md` §10 states this as a domain-level rule, not just an implementation detail.
 - Two independent trigger mechanisms, matching how each sound is owned:
   - **Logic-driven**: dice win/lose in `DiceGame.tsx` (`WIN_SOUND_ASSET`/`LOSE_SOUND_ASSET` constants, fired from `throwDice` right after the roll result is computed) — component-owned, tied to a game-logic outcome (`result.isVictory`), not content data. Not schema-driven. Takes an injectable `playSound?: (src: string) => void` prop (defaulting to the real utility), mirroring the existing injectable `random` prop, for deterministic tests.
-  - **Content-driven**: optional `entrySoundAsset` on the District and POI content schemas (same optionality pattern as `imageAsset`), played via `playSound` in `App.tsx` — for POI, in `onSelectPoi` (a real "player chose to enter this POI" moment); for District, in a mount-only `useEffect` against the currently-resolved district, **not** in `onLeave` (which dispatches `COMMAND_MOVE_TO_DISTRICT` today but only means "left a POI back into the same district" — there's no real district-to-district travel yet, so wiring the sound there would misrepresent "leaving a building" as "arriving in a district"). Both call sites are wrapped in small named functions (`triggerPoiEntryEffects`, `triggerDistrictEntryEffects`) rather than inline checks, so a second entry-effect type wouldn't mean scattered inline logic — see `game-design-spec.md`'s systemic-progression gap for why this isn't generalized further yet.
+  - **Content-driven**: optional `entrySoundAsset` on the District and POI content schemas (same optionality pattern as `imageAsset`), played via `playSound` in `App.tsx` — for POI, in `onSelectPoi` (a real "player chose to enter this POI" moment); for District, in a mount-only `useEffect` against the currently-resolved district, **not** in `onLeave` (which dispatches `COMMAND_MOVE_TO_DISTRICT` today but only means "left a POI back into the same district" — there's no real district-to-district travel yet, so wiring the sound there would misrepresent "leaving a building" as "arriving in a district"). Both call sites now route through `src/engine/utils/entryEffects.ts`'s typed `EntryEffect[]` computation (`computePoiEntryEffects`/`computeDistrictEntryEffects`) plus an in-`App()` executor — the generalization `game-design-spec.md`'s Open Design Gap #9 predicted, once a second effect type (`autoDialogueOnEnter`) actually existed. See `docs/features/feature_dialogue_visibility_and_auto_triggers.md`.
 - No music or looping ambience in this phase — every sound triggered by this system is a one-shot SFX tied to a specific moment.
 
 ## 9. Minigame Runner Architecture

@@ -21,6 +21,7 @@ export const initialPlayerState: PlayerState = {
   unlockedClues: [],
   activeEndeavors: {},
   activeMinigame: null,
+  activeDialogue: null,
   dialogueProgress: {},
 };
 
@@ -59,6 +60,7 @@ function extractPlayerState(store: PlayerStore): PlayerState {
     unlockedClues: store.unlockedClues,
     activeEndeavors: store.activeEndeavors,
     activeMinigame: store.activeMinigame,
+    activeDialogue: store.activeDialogue,
     dialogueProgress: store.dialogueProgress,
   };
 }

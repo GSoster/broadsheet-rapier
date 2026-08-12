@@ -94,6 +94,7 @@ const pois = loadAll(groupFiles("pois"));
 const actors = loadAll(groupFiles("actors"));
 const factions = loadAll(groupFiles("factions"));
 const dialogues = loadAll(groupFiles("dialogues"));
+const endeavors = loadAll(groupFiles("endeavors"));
 
 const factionIdSet = new Set(factions.map((faction) => faction.id as string));
 const actorIdSet = new Set(actors.map((actor) => actor.id as string));
@@ -175,6 +176,31 @@ describe("content integrity: referential integrity", () => {
             expect(nodeKeys.has(choice.nextNodeId as string)).toBe(true);
           });
         }
+      }
+    }
+  });
+
+  // A single test, not one `it` per trigger like the blocks above — no real
+  // content sets autoDialogueOnEnter yet (feature_dialogue_visibility_and_auto_triggers.md's
+  // Reachability note: engine-only, no content instance authored), and an
+  // empty describe/it set from a zero-iteration loop is a Vitest error, not
+  // a vacuous pass. Still catches a broken reference the moment one exists.
+  it("every EndeavorPhase.autoDialogueOnEnter reference resolves to real content", () => {
+    for (const endeavor of endeavors) {
+      const phases = endeavor.phases as Record<
+        string,
+        { autoDialogueOnEnter?: { poiId: string; dialogueId: string } }
+      >;
+      for (const [phaseId, phase] of Object.entries(phases)) {
+        const trigger = phase.autoDialogueOnEnter;
+        if (!trigger) continue;
+        expect(poiIdSet.has(trigger.poiId), `${endeavor.id}.phases["${phaseId}"].autoDialogueOnEnter.poiId`).toBe(
+          true
+        );
+        expect(
+          dialogueIdSet.has(trigger.dialogueId),
+          `${endeavor.id}.phases["${phaseId}"].autoDialogueOnEnter.dialogueId`
+        ).toBe(true);
       }
     }
   });

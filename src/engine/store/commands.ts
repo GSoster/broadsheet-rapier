@@ -243,6 +243,23 @@ const handlers: Record<DispatchableCommandType, CommandHandler> = {
     }
     return next;
   },
+
+  // Sets which dialogue is visible. Deliberately separate from
+  // COMMAND_ENTER_DIALOGUE_NODE (which stays pure bookkeeping, no side
+  // effects) — the same reasoning that kept COMMAND_ENTER_DIALOGUE_NODE and
+  // COMMAND_SELECT_DIALOGUE_CHOICE apart. Dispatched alongside
+  // COMMAND_ENTER_DIALOGUE_NODE wherever a dialogue is opened, including
+  // from a minigame's onSuccessCommands/onFailureCommands.
+  COMMAND_OPEN_DIALOGUE: (state, payload) => {
+    const { dialogueId } = payload as { dialogueId: string };
+    return { ...state, activeDialogue: { dialogueId } };
+  },
+
+  // Clears activeDialogue with no consequence — mirrors
+  // COMMAND_CANCEL_MINIGAME exactly (unconditional, no guard, nothing else
+  // changes). Dispatched from the Close button, an ending dialogue choice,
+  // and leaving the POI mid-conversation.
+  COMMAND_CLOSE_DIALOGUE: (state) => ({ ...state, activeDialogue: null }),
 };
 
 export function applyCommand(state: PlayerState, command: StateCommand): PlayerState {

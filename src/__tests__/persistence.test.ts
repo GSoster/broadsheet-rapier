@@ -34,6 +34,7 @@ describe("localStorage persistence", () => {
     expect(persisted.state).not.toHaveProperty("importSave");
     expect(Object.keys(persisted.state).sort()).toEqual(
       [
+        "activeDialogue",
         "activeEndeavors",
         "activeMinigame",
         "currencies",

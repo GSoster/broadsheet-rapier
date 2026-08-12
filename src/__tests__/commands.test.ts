@@ -450,3 +450,32 @@ describe("COMMAND_SELECT_DIALOGUE_CHOICE", () => {
     expect(next.reputation).toEqual(state.reputation);
   });
 });
+
+describe("COMMAND_OPEN_DIALOGUE", () => {
+  it("sets activeDialogue to the given dialogueId", () => {
+    const state = makeState();
+    const next = applyCommand(state, {
+      type: "COMMAND_OPEN_DIALOGUE",
+      payload: { dialogueId: "dialogue_mara_venn" },
+    });
+    expect(next.activeDialogue).toEqual({ dialogueId: "dialogue_mara_venn" });
+  });
+});
+
+describe("COMMAND_CLOSE_DIALOGUE", () => {
+  it("clears activeDialogue without touching anything else", () => {
+    const state = makeState({
+      activeDialogue: { dialogueId: "dialogue_mara_venn" },
+      currencies: { gold: 0, silver: 2, bronze: 10 },
+    });
+    const next = applyCommand(state, { type: "COMMAND_CLOSE_DIALOGUE", payload: {} });
+    expect(next.activeDialogue).toBeNull();
+    expect(next.currencies).toEqual({ gold: 0, silver: 2, bronze: 10 });
+  });
+
+  it("is a harmless unconditional clear when there was no active dialogue", () => {
+    const state = makeState({ activeDialogue: null });
+    const next = applyCommand(state, { type: "COMMAND_CLOSE_DIALOGUE", payload: {} });
+    expect(next.activeDialogue).toBeNull();
+  });
+});

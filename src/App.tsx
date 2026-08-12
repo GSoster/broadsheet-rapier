@@ -30,6 +30,7 @@ import { FactionSchema } from "./content/schemas/faction.schema";
 import type { ItemDisplayData, RosterEntryData } from "./engine/components/ManagementDrawer";
 import { loadContent } from "./contentLoader";
 import { resolveDialogueEntryNodeId } from "./dialogueResolution";
+import { computeDistrictEntryEffects, computePoiEntryEffects, type EntryEffect } from "./engine/utils/entryEffects";
 
 // Every content file is parsed through its schema here, once, at module
 // load — see contentLoader.ts for why. Nothing below this point ever reads
@@ -47,6 +48,8 @@ const factionWageringRing = loadContent(FactionSchema, factionWageringRingRaw, "
 const pois = [poi];
 const actors = [actor];
 const factions = [factionCityWatch, factionWageringRing];
+const endeavors = [endeavor];
+const endeavorsById = Object.fromEntries(endeavors.map((e) => [e.id, e]));
 
 const dialogues = { [dialogueMaraVenn.id]: dialogueMaraVenn };
 const itemsById: Record<string, ItemDisplayData> = {
@@ -69,49 +72,49 @@ const rosterEntries: RosterEntryData[] = actors.map((a) => ({
 
 const ENDEAVOR_ID = "endeavor_the_missing_broadsheet";
 
-// Small named trigger functions rather than inline checks next to the
-// dispatch/mount logic — cheap now, and avoids scattered inline effect
-// checks accumulating in App.tsx if a second entry-effect type is ever
-// added. Deliberately not generalized into an on-enter-effects registry;
-// see game-design-spec.md's systemic-progression gap for why.
-function triggerDistrictEntryEffects(activeDistrict: typeof district): void {
-  if (activeDistrict.entrySoundAsset) {
-    playSound(activeDistrict.entrySoundAsset);
-  }
-}
-
-function triggerPoiEntryEffects(activePoi: (typeof pois)[number]): void {
-  if (activePoi.entrySoundAsset) {
-    playSound(activePoi.entrySoundAsset);
-  }
-}
-
 function App() {
   const currentLocation = usePlayerStore((state) => state.currentLocation);
   const currencies = usePlayerStore((state) => state.currencies);
   const activeEndeavors = usePlayerStore((state) => state.activeEndeavors);
   const dialogueProgress = usePlayerStore((state) => state.dialogueProgress);
+  const activeDialogue = usePlayerStore((state) => state.activeDialogue);
   const dispatchCommand = usePlayerStore((state) => state.dispatchCommand);
   const [isDrawerOpen, setDrawerOpen] = useState(false);
   const [selectedActorId, setSelectedActorId] = useState<string | null>(null);
-  const [openDialogueId, setOpenDialogueId] = useState<string | null>(null);
+
+  // Turns a computed EntryEffect into the actual side effect. Lives inside
+  // App() (not a top-level function) since DIALOGUE effects need
+  // dispatchCommand/dialogues/dialogueProgress from component scope.
+  function executeEntryEffect(effect: EntryEffect) {
+    if (effect.type === "SOUND") {
+      playSound(effect.asset);
+      return;
+    }
+    const nodeId = effect.nodeId ?? resolveDialogueEntryNodeId(dialogues[effect.dialogueId], dialogueProgress[effect.dialogueId]);
+    dispatchCommand({
+      type: "COMMAND_ENTER_DIALOGUE_NODE",
+      payload: { dialogueId: effect.dialogueId, nodeId },
+    });
+    dispatchCommand({ type: "COMMAND_OPEN_DIALOGUE", payload: { dialogueId: effect.dialogueId } });
+  }
 
   useEffect(() => {
-    triggerDistrictEntryEffects(district);
+    computeDistrictEntryEffects(district).forEach(executeEntryEffect);
     // district is a static top-level import today, so this effect correctly
     // runs once on mount; once real district-to-district travel exists,
     // district will need to become reactive and this effect's dependencies
     // must be revisited, or entry sound will silently stop firing on
     // district changes.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const currentPoi = pois.find((p) => p.id === currentLocation.poiId);
 
-  const openDialogue = openDialogueId ? dialogues[openDialogueId] : null;
+  const openDialogue = activeDialogue ? dialogues[activeDialogue.dialogueId] : null;
   const openNode = openDialogue
     ? openDialogue.nodes[resolveDialogueEntryNodeId(openDialogue, dialogueProgress[openDialogue.id])]
     : null;
-  const speakerActor = actors.find((a) => a.id === selectedActorId);
+  const speakerActor = actors.find((a) => a.dialogueId === activeDialogue?.dialogueId);
 
   const handleSelectActor = (actorId: string) => {
     setSelectedActorId(actorId);
@@ -124,7 +127,7 @@ function App() {
       type: "COMMAND_ENTER_DIALOGUE_NODE",
       payload: { dialogueId: dialogue.id, nodeId: entryNodeId },
     });
-    setOpenDialogueId(dialogue.id);
+    dispatchCommand({ type: "COMMAND_OPEN_DIALOGUE", payload: { dialogueId: dialogue.id } });
   };
 
   function buildPoiActions(activePoi: (typeof pois)[number]): NodeInteractionAction[] {
@@ -198,7 +201,7 @@ function App() {
           onSelectActor={handleSelectActor}
           onLeave={() => {
             setSelectedActorId(null);
-            setOpenDialogueId(null);
+            dispatchCommand({ type: "COMMAND_CLOSE_DIALOGUE", payload: {} });
             dispatchCommand({
               type: "COMMAND_MOVE_TO_DISTRICT",
               payload: { districtId: currentLocation.districtId },
@@ -213,7 +216,7 @@ function App() {
           onSelectPoi={(poiId) => {
             const target = pois.find((p) => p.id === poiId);
             if (target) {
-              triggerPoiEntryEffects(target);
+              computePoiEntryEffects(target, activeEndeavors, endeavorsById).forEach(executeEntryEffect);
             }
             dispatchCommand({
               // target.costShifts is guaranteed present (PoiSchema's
@@ -236,10 +239,9 @@ function App() {
       />
       <MinigameOverlay />
       <DialogueOverlay
-        dialogueId={openDialogueId ?? ""}
+        dialogueId={activeDialogue?.dialogueId ?? ""}
         node={openNode}
         speakerImageAsset={speakerActor?.imageAsset}
-        onClose={() => setOpenDialogueId(null)}
       />
     </div>
   );

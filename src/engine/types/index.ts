@@ -19,6 +19,8 @@ export type CommandType =
   | "COMMAND_CANCEL_MINIGAME"
   | "COMMAND_ENTER_DIALOGUE_NODE"
   | "COMMAND_SELECT_DIALOGUE_CHOICE"
+  | "COMMAND_OPEN_DIALOGUE"
+  | "COMMAND_CLOSE_DIALOGUE"
   | "COMMAND_NEXT_DAY";
 
 export interface StateCommand<T = Record<string, unknown>> {
@@ -112,6 +114,7 @@ export interface PlayerState {
   unlockedClues: string[];
   activeEndeavors: Record<string, { currentPhaseId: string; logHistory: string[] }>;
   activeMinigame: MinigameLauncherPayload | null;
+  activeDialogue: { dialogueId: string } | null;
   dialogueProgress: Record<string, { currentNodeId: string; visitCounts: Record<string, number> }>;
 }
 
@@ -227,6 +230,11 @@ export const StateCommandSchema: z.ZodType<StateCommand<any>> = z.discriminatedU
       })
       .strict(),
   }),
+  z.object({
+    type: z.literal("COMMAND_OPEN_DIALOGUE"),
+    payload: z.object({ dialogueId: z.string() }).strict(),
+  }),
+  z.object({ type: z.literal("COMMAND_CLOSE_DIALOGUE"), payload: z.object({}).strict() }),
 ]);
 
 const DiceConfigSchema = z.object({ wager: z.number() }).strict();
@@ -302,6 +310,7 @@ export const PlayerStateSchema: z.ZodType<PlayerState> = z.object({
     })
   ),
   activeMinigame: MinigameLauncherPayloadSchema.nullable(),
+  activeDialogue: z.object({ dialogueId: z.string() }).strict().nullable(),
   dialogueProgress: z.record(
     z.string(),
     z.object({

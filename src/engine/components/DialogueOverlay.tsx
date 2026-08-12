@@ -31,10 +31,9 @@ export interface DialogueOverlayProps {
   // src/content/ directly, so this arrives as a plain optional path, same
   // pattern as NodeInteractionCanvas's imageAsset).
   speakerImageAsset?: string;
-  onClose: () => void;
 }
 
-export function DialogueOverlay({ dialogueId, node, speakerImageAsset, onClose }: DialogueOverlayProps) {
+export function DialogueOverlay({ dialogueId, node, speakerImageAsset }: DialogueOverlayProps) {
   const playerState = usePlayerStore((state) => state);
   const dispatchCommand = usePlayerStore((state) => state.dispatchCommand);
 
@@ -42,13 +41,17 @@ export function DialogueOverlay({ dialogueId, node, speakerImageAsset, onClose }
     return null;
   }
 
+  const closeDialogue = () => {
+    dispatchCommand({ type: "COMMAND_CLOSE_DIALOGUE", payload: {} });
+  };
+
   const handleSelectChoice = (choice: DialogueOverlayChoice) => {
     dispatchCommand({
       type: "COMMAND_SELECT_DIALOGUE_CHOICE",
       payload: { dialogueId, nextNodeId: choice.nextNodeId ?? null, commands: choice.commands },
     });
     if (choice.nextNodeId === undefined) {
-      onClose();
+      closeDialogue();
     }
   };
 
@@ -68,7 +71,7 @@ export function DialogueOverlay({ dialogueId, node, speakerImageAsset, onClose }
           </div>
           <button
             type="button"
-            onClick={onClose}
+            onClick={closeDialogue}
             className="flex-none text-xs uppercase tracking-wide text-indigo-400 hover:text-indigo-100"
           >
             Close

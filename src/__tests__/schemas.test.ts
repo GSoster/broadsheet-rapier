@@ -114,6 +114,38 @@ describe("EndeavorSchema", () => {
     };
     expect(EndeavorSchema.safeParse(invalid).success).toBe(false);
   });
+
+  it("accepts a phase with autoDialogueOnEnter", () => {
+    const withTrigger = {
+      ...validEndeavor,
+      phases: {
+        ...validEndeavor.phases,
+        phase_ask_around: {
+          ...validEndeavor.phases.phase_ask_around,
+          autoDialogueOnEnter: { poiId: "poi_crooked_hour_tavern", dialogueId: "dialogue_mara_venn" },
+        },
+      },
+    };
+    expect(EndeavorSchema.safeParse(withTrigger).success).toBe(true);
+  });
+
+  it("rejects an autoDialogueOnEnter with an unexpected extra key (.strict())", () => {
+    const invalid = {
+      ...validEndeavor,
+      phases: {
+        ...validEndeavor.phases,
+        phase_ask_around: {
+          ...validEndeavor.phases.phase_ask_around,
+          autoDialogueOnEnter: {
+            poiId: "poi_crooked_hour_tavern",
+            dialogueId: "dialogue_mara_venn",
+            unexpectedKey: true,
+          },
+        },
+      },
+    };
+    expect(EndeavorSchema.safeParse(invalid).success).toBe(false);
+  });
 });
 
 describe("DialogueSchema", () => {

@@ -39,6 +39,7 @@ test(schemas): add POI schema validation fixtures
 - Command handlers are pure where possible: given the same state and command, produce the same result.
 - No dead code, no commented-out blocks left in place — delete or don't commit it.
 - Every schema in `src/content/schemas/` needs at least one valid and one invalid fixture in `src/__tests__/schemas.test.ts` (hand-crafted edge cases for the schema's *shape*). Separately, `src/__tests__/content-integrity.test.ts` globs every real file under `src/content/` and validates it against its schema automatically — new content files need no test changes to be covered by it, only `schemas.test.ts` needs a new fixture when a new schema itself is added.
+- **Any component test file whose component takes 3+ required props needs a local default-props helper (`function renderX(overrides = {})`, or a `makeXProps(overrides)` returning the defaults), not full prop lists repeated in every test.** `commands.test.ts` already does this for `PlayerState` (`makeState(overrides)`); component tests didn't have an equivalent, and `ManagementDrawer`'s prop list grew twice in one project history (`items`, then `roster`), rippling a one-line addition into ~15 existing render calls each time. A helper turns that into a one-line change at the helper definition. Retrofit an existing test file's helper the next time you're already touching it for another reason — not a mandatory standalone pass.
 - **Definition of Done includes tests alongside the logic that needs them, in the same phase — not deferred to a later testing phase.** This applies to `src/engine/{store,minigames}` logic (Vitest, `node` environment) and to `src/engine/components/` (Vitest + `@testing-library/react` + `jsdom`, structure/behavior tests — e.g. "renders X from these props," "clicking Y fires this callback"). A full visual/rendering pass (Playwright, a real browser, screenshots) is *not* required every phase — reserve it for deliberate UI milestones via the `ui-visual-check` skill, not routine per-phase verification.
 - Run `npm run test` and `npx tsc -b --noEmit` before considering any phase done. Both must pass clean. Use `-b` (build/project-references mode) — the root `tsconfig.json` has no `"files"`/`"include"`, only `"references"`, so bare `tsc --noEmit` silently checks nothing and always "passes."
 
@@ -54,19 +55,20 @@ Log meaningful additions under `[Unreleased]` in `CHANGELOG.md` as you go, not a
 
 ## Definition of Done (every phase)
 
-A phase is not complete until all seven are true:
+A phase is not complete until all eight are true:
 1. `npx tsc -b --noEmit` passes clean — paste the actual terminal output. (Not bare `npx tsc --noEmit` — see Code Standards above.)
 2. `npm run lint` passes clean — paste the actual terminal output. Not a substitute for or covered by #1: `tsc` and ESLint catch different things (e.g. `prefer-const` isn't a type error), and CI runs both as separate steps — a phase that only checks `tsc`+`test` locally can still fail CI on lint alone. This exact gap shipped once for real (see `docs/decisions.md`), which is why it's now spelled out here instead of assumed under "the usual checks."
 3. `npm run test` passes clean — paste the actual terminal output.
-4. Any new command handler, store logic, or other non-trivial pure
+4. `npm run build` passes clean — paste the actual terminal output. Not fully covered by #1: `.github/workflows/deploy.yml` runs `npm run build` (which is `tsc -b && vite build`) on every push to `main` to publish GitHub Pages, and Vite's bundling/asset-resolution step is a real, separate failure mode from plain type-checking — the same shape of gap that made #2 necessary (a CI workflow runs a check no local step mirrored). Re-running `tsc -b` here is harmless/fast (incremental).
+5. Any new command handler, store logic, or other non-trivial pure
    function introduced this phase has unit test coverage in the same
    phase — not deferred to a later "testing phase." Type-checking is
    not a substitute for behavioral verification.
-5. The full contents of every file created or changed are shown,
+6. The full contents of every file created or changed are shown,
    unless the user explicitly waives this for a given phase.
-6. Every judgment call or ambiguity is listed explicitly, never
+7. Every judgment call or ambiguity is listed explicitly, never
    silently resolved.
-7. `CHANGELOG.md`'s `[Unreleased]` section has an entry for what this
+8. `CHANGELOG.md`'s `[Unreleased]` section has an entry for what this
    phase actually added/changed/fixed, in Keep a Changelog terms —
    not deferred to "later." A phase that touches user-visible behavior
    (a new command, a new UI element, a bug fix) with no changelog

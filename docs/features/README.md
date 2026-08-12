@@ -8,6 +8,7 @@ One file per feature/content spec, per `docs/feature-workflow.md`. Filenames pre
 | [feature_audio_system.md](feature_audio_system.md) | Feature | Implemented | Fail-silent `playSound` utility; dice win/lose SFX; content-driven `entrySoundAsset`. Backfilled. |
 | [feature_dialogue_branching.md](feature_dialogue_branching.md) | Feature | Implemented | Branching dialogue schema/engine, `.strict()` discriminated-union `StateCommandSchema`, `COMMAND_ENTER_DIALOGUE_NODE`/`COMMAND_SELECT_DIALOGUE_CHOICE`, Mara Venn's dialogue tree replacing her hardcoded reputation logic. |
 | [feature_rapier_duel.md](feature_rapier_duel.md) | Feature | Implemented | Turn-based `DUEL` minigame mechanic (energy/poise/distance, 5 actions, guard-break bonus), discriminated `MinigameLauncherPayload.config`, `item_rapier` starter item. Engine-only, no in-content trigger yet. |
+| [feature_dialogue_visibility_and_auto_triggers.md](feature_dialogue_visibility_and_auto_triggers.md) | Feature | Implemented | Moves dialogue-open state (`activeDialogue`) into `PlayerState`, mirroring `activeMinigame`; new `COMMAND_OPEN_DIALOGUE`/`COMMAND_CLOSE_DIALOGUE`; generalizes `entrySoundAsset`'s trigger functions into a typed `EntryEffect[]` registry (`src/engine/utils/entryEffects.ts`); adds `EndeavorPhase.autoDialogueOnEnter` so a phase can auto-open a dialogue on POI entry. Engine-only, no in-content trigger authored yet. |
 
 ## Other notable process/tooling findings
 

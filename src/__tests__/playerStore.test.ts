@@ -17,6 +17,7 @@ describe("initial state", () => {
     expect(state.unlockedClues).toEqual([]);
     expect(state.activeEndeavors).toEqual({});
     expect(state.activeMinigame).toBeNull();
+    expect(state.activeDialogue).toBeNull();
     expect(state.eventLog).toEqual([]);
   });
 });
