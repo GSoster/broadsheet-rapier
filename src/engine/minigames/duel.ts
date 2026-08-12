@@ -82,8 +82,8 @@ export function evaluateDuelTurn(
   opponentAction: DuelAction
 ): DuelTurnResult {
   const log: string[] = [];
-  let player: CombatantState = { ...context.player };
-  let opponent: CombatantState = { ...context.opponent };
+  const player: CombatantState = { ...context.player };
+  const opponent: CombatantState = { ...context.opponent };
   let distance = context.distance;
 
   const playerLegal = isLegal(playerAction, distance);

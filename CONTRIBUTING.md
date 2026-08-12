@@ -54,18 +54,19 @@ Log meaningful additions under `[Unreleased]` in `CHANGELOG.md` as you go, not a
 
 ## Definition of Done (every phase)
 
-A phase is not complete until all five are true:
+A phase is not complete until all seven are true:
 1. `npx tsc -b --noEmit` passes clean — paste the actual terminal output. (Not bare `npx tsc --noEmit` — see Code Standards above.)
-2. `npm run test` passes clean — paste the actual terminal output.
-3. Any new command handler, store logic, or other non-trivial pure
+2. `npm run lint` passes clean — paste the actual terminal output. Not a substitute for or covered by #1: `tsc` and ESLint catch different things (e.g. `prefer-const` isn't a type error), and CI runs both as separate steps — a phase that only checks `tsc`+`test` locally can still fail CI on lint alone. This exact gap shipped once for real (see `docs/decisions.md`), which is why it's now spelled out here instead of assumed under "the usual checks."
+3. `npm run test` passes clean — paste the actual terminal output.
+4. Any new command handler, store logic, or other non-trivial pure
    function introduced this phase has unit test coverage in the same
    phase — not deferred to a later "testing phase." Type-checking is
    not a substitute for behavioral verification.
-4. The full contents of every file created or changed are shown,
+5. The full contents of every file created or changed are shown,
    unless the user explicitly waives this for a given phase.
-5. Every judgment call or ambiguity is listed explicitly, never
+6. Every judgment call or ambiguity is listed explicitly, never
    silently resolved.
-6. `CHANGELOG.md`'s `[Unreleased]` section has an entry for what this
+7. `CHANGELOG.md`'s `[Unreleased]` section has an entry for what this
    phase actually added/changed/fixed, in Keep a Changelog terms —
    not deferred to "later." A phase that touches user-visible behavior
    (a new command, a new UI element, a bug fix) with no changelog

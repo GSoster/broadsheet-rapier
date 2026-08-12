@@ -1,9 +1,13 @@
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { playSound } from "../engine/audio/playSound";
 
 function fakeAudioFactory(play: () => unknown) {
   return () => ({ play }) as unknown as HTMLAudioElement;
 }
+
+afterEach(() => {
+  vi.unstubAllEnvs();
+});
 
 describe("playSound", () => {
   it("attempts playback via the audio factory for a given src", () => {
@@ -55,5 +59,13 @@ describe("playSound", () => {
     expect(warnSpy).toHaveBeenCalledTimes(1);
 
     warnSpy.mockRestore();
+  });
+
+  it("resolves the src against a non-root Vite BASE_URL before invoking the audio factory", () => {
+    vi.stubEnv("BASE_URL", "/broadsheet-rapier/");
+    const play = vi.fn().mockReturnValue(undefined);
+    const audioFactory = vi.fn(fakeAudioFactory(play));
+    playSound("/content/assets/audio/dice_win.mp3", { audioFactory });
+    expect(audioFactory).toHaveBeenCalledWith("/broadsheet-rapier/content/assets/audio/dice_win.mp3");
   });
 });

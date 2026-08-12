@@ -156,15 +156,15 @@ src/
     store/{playerStore.ts, commands.ts, events.ts}
     minigames/{dice.ts, duel.ts, index.ts}
     audio/{playSound.ts}
-    utils/{evaluator.ts}
+    utils/{evaluator.ts, resolveAssetUrl.ts}
     components/{WorldClockHud.tsx, WorldNavigationView.tsx, NodeInteractionCanvas.tsx, ManagementDrawer.tsx, AssetFallback.tsx, MinigameOverlay.tsx, DialogueOverlay.tsx, minigames/{DiceGame.tsx, DuelGame.tsx}}
   content/
     schemas/{shared.ts, settlement.schema.ts, district.schema.ts, poi.schema.ts, actor.schema.ts, faction.schema.ts, endeavor.schema.ts, dialogue.schema.ts, item.schema.ts}
     settlements/ districts/ pois/ actors/ factions/ endeavors/ dialogues/ items/
   dialogueResolution.ts
-  __tests__/{schemas.test.ts, content-integrity.test.ts, playerStore.test.ts, persistence.test.ts, commands.test.ts, minigames.test.ts, dice.test.ts, duel.test.ts, playSound.test.ts, evaluator.test.ts, resolveDialogueEntryNodeId.test.ts, components/, setup/}
+  __tests__/{schemas.test.ts, content-integrity.test.ts, playerStore.test.ts, persistence.test.ts, commands.test.ts, minigames.test.ts, dice.test.ts, duel.test.ts, playSound.test.ts, resolveAssetUrl.test.ts, evaluator.test.ts, resolveDialogueEntryNodeId.test.ts, components/, setup/}
 public/
-  content/assets/{images/districts, images/pois, images/actors, audio}/
+  content/assets/{images/districts, images/pois, images/actors, images/items, audio}/
 ```
 
 `minigames/` only has files for types with a defined mechanic (`dice.ts`, `duel.ts`) plus the `index.ts` registry — `lockpicking.ts` and `fishing.ts` don't exist yet and shouldn't be stubbed out ahead of their specs (`game-design-spec.md` § Open Design Gaps, item 1). Same reasoning for `components/minigames/`: only `DiceGame.tsx`/`DuelGame.tsx` exist; the other two minigame types get their own UI component once their mechanic is specified.
@@ -173,9 +173,10 @@ public/
 
 ## 8. Asset Handling
 
-- Asset paths: `/public/content/assets/images/{districts,pois,actors}/` and `/public/content/assets/audio/`.
+- Asset paths: `/public/content/assets/images/{districts,pois,actors,items}/` and `/public/content/assets/audio/`.
 - Filenames: `snake_case` (e.g. `lantern_ward_bg.webp`).
 - Paths inside content JSON are relative/absolute web paths resolved dynamically by rendering components — never imported directly into engine code.
+- **Every content-authored path is root-relative (`/content/assets/...`) and must be run through `src/engine/utils/resolveAssetUrl.ts` before it becomes a real `src`/`Audio()` call** — the app builds with a non-root Vite `base` (`/broadsheet-rapier/`, for GitHub Pages), so a literal root-relative path 404s under that base in both dev and production. `AssetFallback` and `playSound` are the only two chokepoints that turn a content path into a request, and both already resolve through it; nothing else should construct an `<img src>`/`new Audio()` directly from a content field. See `docs/decisions.md` for the incident this closes (invisible until the first real asset file was actually added).
 - Missing/failed asset load renders a placeholder: bright purple border (`border-purple-600 bg-purple-950/80`), warning icon, text `MISSING: [asset_path]`. Implemented once as a shared `AssetFallback` component wrapping every image/audio reference — never reimplemented ad hoc per component.
 
 ### Content Loading (implemented)

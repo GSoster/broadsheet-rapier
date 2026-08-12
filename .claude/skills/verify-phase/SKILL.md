@@ -1,6 +1,6 @@
 ---
 name: verify-phase
-description: Run this repo's per-phase Definition of Done checklist (tsc, tests, scope check, judgment-call report, commit message) before declaring any execution-plan.md phase or follow-up done.
+description: Run this repo's per-phase Definition of Done checklist (tsc, lint, tests, scope check, judgment-call report, commit message) before declaring any execution-plan.md phase or follow-up done.
 ---
 
 # verify-phase
@@ -24,7 +24,17 @@ have to be re-derived and re-typed in prose every time.
    Must produce no output. If it errors, fix before continuing — never
    report a phase done with a red type-check.
 
-2. **Test.** Run `npm run test`. Must show all files/tests passing.
+2. **Lint.** Run `npm run lint`. Must produce no output/errors. This is
+   **not** covered by step 1 — `tsc` and ESLint check different things
+   (e.g. `prefer-const` on a variable that's mutated-in-place but never
+   reassigned is a lint error, not a type error), and CI runs them as
+   two separate steps in this exact order (`.github/workflows/ci.yml`:
+   Type check → Lint → Test). A phase that only ran `tsc`+`test`
+   locally shipped a real lint-only CI failure once for exactly this
+   reason (see `docs/decisions.md`) — don't skip this step because
+   `tsc` was clean.
+
+3. **Test.** Run `npm run test`. Must show all files/tests passing.
    Per `CONTRIBUTING.md`'s Definition of Done, tests are written
    *alongside* the logic that needs them, in the same phase, not
    deferred:
@@ -54,7 +64,7 @@ have to be re-derived and re-typed in prose every time.
      defaulted field and crash at runtime with every test green
      (`docs/decisions.md`).
 
-3. **Reachability check.** For anything with a player-facing entry
+4. **Reachability check.** For anything with a player-facing entry
    point (a new action, minigame, UI element), verify it from a
    genuinely fresh state — use the dev-only Reset Progress button
    (`ManagementDrawer`) + reload, not hand-editing `localStorage`. Per
@@ -63,7 +73,7 @@ have to be re-derived and re-typed in prose every time.
    entry — it only happens if actually done, so do it, don't just note
    that it should be done.
 
-4. **Consistency sweep.** Grep for other references to any entity/value
+5. **Consistency sweep.** Grep for other references to any entity/value
    this phase changed (a renamed field, a corrected faction, a changed
    title) — `content-integrity.test.ts` catches *broken references*
    automatically, but not attribute-level drift (a stale title after a
@@ -71,31 +81,31 @@ have to be re-derived and re-typed in prose every time.
    also manual, also unenforced by anything automatic — same discipline
    as the reachability check above.
 
-5. **Confirm scope.** Run `git status --porcelain` and check the
+6. **Confirm scope.** Run `git status --porcelain` and check the
    changed files match what the phase actually called for — nothing
    under `src/engine/` touched when the task was "add narrative
    content," no unrelated files dragged in. If something unexpected
    shows up, explain why before moving on.
 
-6. **Check CI coverage.** Read `.github/workflows/ci.yml`. It runs
-   `npx tsc -b --noEmit`, `npm run lint`, and `npm run test` generically
-   — new test files and new eslint rules are automatically covered by
-   those three, no workflow edit needed. But if this phase added a
-   *new* verification command (a new `npm run` script, a separate
+7. **Check CI coverage.** Read `.github/workflows/ci.yml`. It runs
+   `npx tsc -b --noEmit`, `npm run lint`, and `npm run test` — steps 1,
+   2, and 3 above already cover all three locally, so new test files
+   and new eslint rules need no workflow edit. But if this phase added
+   a *new* verification command (a new `npm run` script, a separate
    typecheck target, an e2e/visual step, a new required tool) that
    isn't one of those three existing steps, CI will silently never run
    it. If that happened, add the step to `ci.yml` and say so in the
    report — don't leave a check that only runs when a human remembers
    to run it locally.
 
-7. **Update `CHANGELOG.md`.** Add an entry under `[Unreleased]` (Keep
+8. **Update `CHANGELOG.md`.** Add an entry under `[Unreleased]` (Keep
    a Changelog style: Added/Changed/Fixed) for what this phase
    actually did, if it touched user-visible behavior — a new command,
    a UI element, a bug fix. Don't defer this to "later" — there's no
    later in a project without dated releases yet; entries only ever
    get written now or never.
 
-8. **Report judgment calls.** Per `CLAUDE.md` §1 ("do not invent
+9. **Report judgment calls.** Per `CLAUDE.md` §1 ("do not invent
    domain rules — stop and flag the gap"), anywhere a spec was
    ambiguous, silent, or self-contradictory and a decision had to be
    made to keep moving, list it explicitly in the response — don't let
@@ -107,15 +117,16 @@ have to be re-derived and re-typed in prose every time.
    `docs/features/` spec per `docs/feature-workflow.md` — retroactively
    backfilling one is better than never having one.
 
-9. **Propose a commit message**, following `CONTRIBUTING.md`'s
-   Conventional Commits format (`type(scope): summary`). Propose only
-   — don't commit unless explicitly asked to.
+10. **Propose a commit message**, following `CONTRIBUTING.md`'s
+    Conventional Commits format (`type(scope): summary`). Propose only
+    — don't commit unless explicitly asked to.
 
 ## Output shape
 
-Paste the full `tsc` output (or confirm empty), the full `test`
-output, a short list of files touched, confirmation `CHANGELOG.md` was
-updated (or a one-line reason it wasn't — e.g. "docs-only phase, no
-user-visible change"), any judgment calls, and the proposed commit
-message. This is what "phase done" looks like in this repo — don't
-shortcut it even when the change feels small.
+Paste the full `tsc` output (or confirm empty), the full `lint`
+output (or confirm empty), the full `test` output, a short list of
+files touched, confirmation `CHANGELOG.md` was updated (or a one-line
+reason it wasn't — e.g. "docs-only phase, no user-visible change"),
+any judgment calls, and the proposed commit message. This is what
+"phase done" looks like in this repo — don't shortcut it even when the
+change feels small.

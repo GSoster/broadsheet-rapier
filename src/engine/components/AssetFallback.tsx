@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { TriangleAlert } from "lucide-react";
+import { resolveAssetUrl } from "../utils/resolveAssetUrl";
 
 export interface AssetFallbackProps {
   src: string;
@@ -10,6 +11,7 @@ export interface AssetFallbackProps {
 
 export function AssetFallback({ src, alt, kind = "image", className }: AssetFallbackProps) {
   const [failed, setFailed] = useState(false);
+  const resolvedSrc = resolveAssetUrl(src);
 
   if (failed) {
     return (
@@ -23,8 +25,8 @@ export function AssetFallback({ src, alt, kind = "image", className }: AssetFall
   }
 
   if (kind === "audio") {
-    return <audio src={src} controls className={className} onError={() => setFailed(true)} />;
+    return <audio src={resolvedSrc} controls className={className} onError={() => setFailed(true)} />;
   }
 
-  return <img src={src} alt={alt} className={className} onError={() => setFailed(true)} />;
+  return <img src={resolvedSrc} alt={alt} className={className} onError={() => setFailed(true)} />;
 }
