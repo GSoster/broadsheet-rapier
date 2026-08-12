@@ -45,6 +45,14 @@ have to be re-derived and re-typed in prose every time.
      validates every real file automatically; only check that this
      test file's glob patterns still cover any newly-added content
      subfolder.
+   - If this phase adds or changes a schema field with `.default(...)`,
+     a passing `content-integrity.test.ts`/`schemas.test.ts` does **not**
+     prove it's safe — both only ever exercise the *parsed* shape.
+     Confirm the field is actually reachable through `App.tsx`'s
+     parse-on-load path (`src/contentLoader.ts`) instead; this is the
+     real, previously-live gap that let a raw content file omit a
+     defaulted field and crash at runtime with every test green
+     (`docs/decisions.md`).
 
 3. **Reachability check.** For anything with a player-facing entry
    point (a new action, minigame, UI element), verify it from a

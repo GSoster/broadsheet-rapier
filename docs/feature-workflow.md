@@ -69,7 +69,7 @@ Seven repeatable risk categories showed up across this project's phases so far, 
 - **Consistency check** — what other content/docs reference the thing(s) this touches? (targets C)
 - **Environment notes** — does this rely on anything that might differ between local and CI? (targets D; usually N/A, but forces the check)
 - **Test plan** — including any "should never happen"/invariant-style assertions, not just happy-path coverage (targets E)
-- **Content-schema scaling note** — does `content-integrity.test.ts`'s glob (and now its referential-integrity checks, §5) already cover this, or does a new pattern need adding? (targets F)
+- **Content-schema scaling note** — does `content-integrity.test.ts`'s glob (and now its referential-integrity checks, §5) already cover this, or does a new pattern need adding? (targets F) **If this phase adds or changes a content schema field with `.default(...)`, also confirm it's reachable through `App.tsx`'s parse-on-load path (`src/contentLoader.ts`'s `loadContent`, `web-implementation.md`'s Content Loading section) — `content-integrity.test.ts`/`schemas.test.ts` only ever exercise the *parsed* shape and will pass even if a raw content file omits the field, which is exactly the gap that caused a real runtime crash during the dialogue-branching phase (see `docs/decisions.md`). A schema default is not proven reachable by a passing schema test alone.**
 - **Open questions / explicitly deferred scope.**
 - **Status** — `Draft` → `Approved` → `Implemented (CHANGELOG: "…"; decisions.md: "…")`.
 

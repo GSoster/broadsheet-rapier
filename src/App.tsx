@@ -10,20 +10,35 @@ import { ManagementDrawer } from "./engine/components/ManagementDrawer";
 import { MinigameOverlay } from "./engine/components/MinigameOverlay";
 import { DialogueOverlay } from "./engine/components/DialogueOverlay";
 
-import settlement from "./content/settlements/settlement_valdeombra_city.json";
-import district from "./content/districts/district_lantern_ward.json";
-import poi from "./content/pois/poi_crooked_hour_tavern.json";
-import actor from "./content/actors/actor_mara_venn.json";
-import endeavor from "./content/endeavors/endeavor_the_missing_broadsheet.json";
+import settlementRaw from "./content/settlements/settlement_valdeombra_city.json";
+import districtRaw from "./content/districts/district_lantern_ward.json";
+import poiRaw from "./content/pois/poi_crooked_hour_tavern.json";
+import actorRaw from "./content/actors/actor_mara_venn.json";
+import endeavorRaw from "./content/endeavors/endeavor_the_missing_broadsheet.json";
 import dialogueMaraVennRaw from "./content/dialogues/dialogue_mara_venn.json";
-import type { Dialogue } from "./content/schemas/dialogue.schema";
+import { SettlementSchema } from "./content/schemas/settlement.schema";
+import { DistrictSchema } from "./content/schemas/district.schema";
+import { PoiSchema } from "./content/schemas/poi.schema";
+import { ActorSchema } from "./content/schemas/actor.schema";
+import { EndeavorSchema } from "./content/schemas/endeavor.schema";
+import { DialogueSchema } from "./content/schemas/dialogue.schema";
+import { loadContent } from "./contentLoader";
 import { resolveDialogueEntryNodeId } from "./dialogueResolution";
+
+// Every content file is parsed through its schema here, once, at module
+// load — see contentLoader.ts for why. Nothing below this point ever reads
+// a *Raw import directly.
+const settlement = loadContent(SettlementSchema, settlementRaw, "settlement_valdeombra_city");
+const district = loadContent(DistrictSchema, districtRaw, "district_lantern_ward");
+const poi = loadContent(PoiSchema, poiRaw, "poi_crooked_hour_tavern");
+const actor = loadContent(ActorSchema, actorRaw, "actor_mara_venn");
+const endeavor = loadContent(EndeavorSchema, endeavorRaw, "endeavor_the_missing_broadsheet");
+const dialogueMaraVenn = loadContent(DialogueSchema, dialogueMaraVennRaw, "dialogue_mara_venn");
 
 const pois = [poi];
 const actors = [actor];
 
-const dialogueMaraVenn = dialogueMaraVennRaw as Dialogue;
-const dialogues: Record<string, Dialogue> = { [dialogueMaraVenn.id]: dialogueMaraVenn };
+const dialogues = { [dialogueMaraVenn.id]: dialogueMaraVenn };
 
 const ENDEAVOR_ID = "endeavor_the_missing_broadsheet";
 
@@ -173,8 +188,12 @@ function App() {
               triggerPoiEntryEffects(target);
             }
             dispatchCommand({
+              // target.costShifts is guaranteed present (PoiSchema's
+              // .default(0) applied at load time by contentLoader.ts) once
+              // target itself resolves — the `? :` only covers "no matching
+              // poi found", not a missing/undefaulted field.
               type: "COMMAND_MOVE_TO_POI",
-              payload: { poiId, costShifts: target?.costShifts ?? 0 },
+              payload: { poiId, costShifts: target ? target.costShifts : 0 },
             });
           }}
         />
