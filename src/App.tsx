@@ -17,6 +17,8 @@ import actorRaw from "./content/actors/actor_mara_venn.json";
 import endeavorRaw from "./content/endeavors/endeavor_the_missing_broadsheet.json";
 import dialogueMaraVennRaw from "./content/dialogues/dialogue_mara_venn.json";
 import itemRapierRaw from "./content/items/item_rapier.json";
+import factionCityWatchRaw from "./content/factions/faction_city_watch.json";
+import factionWageringRingRaw from "./content/factions/faction_wagering_ring.json";
 import { SettlementSchema } from "./content/schemas/settlement.schema";
 import { DistrictSchema } from "./content/schemas/district.schema";
 import { PoiSchema } from "./content/schemas/poi.schema";
@@ -24,7 +26,8 @@ import { ActorSchema } from "./content/schemas/actor.schema";
 import { EndeavorSchema } from "./content/schemas/endeavor.schema";
 import { DialogueSchema } from "./content/schemas/dialogue.schema";
 import { ItemSchema } from "./content/schemas/item.schema";
-import type { ItemDisplayData } from "./engine/components/ManagementDrawer";
+import { FactionSchema } from "./content/schemas/faction.schema";
+import type { ItemDisplayData, RosterEntryData } from "./engine/components/ManagementDrawer";
 import { loadContent } from "./contentLoader";
 import { resolveDialogueEntryNodeId } from "./dialogueResolution";
 
@@ -38,9 +41,12 @@ const actor = loadContent(ActorSchema, actorRaw, "actor_mara_venn");
 const endeavor = loadContent(EndeavorSchema, endeavorRaw, "endeavor_the_missing_broadsheet");
 const dialogueMaraVenn = loadContent(DialogueSchema, dialogueMaraVennRaw, "dialogue_mara_venn");
 const itemRapier = loadContent(ItemSchema, itemRapierRaw, "item_rapier");
+const factionCityWatch = loadContent(FactionSchema, factionCityWatchRaw, "faction_city_watch");
+const factionWageringRing = loadContent(FactionSchema, factionWageringRingRaw, "faction_wagering_ring");
 
 const pois = [poi];
 const actors = [actor];
+const factions = [factionCityWatch, factionWageringRing];
 
 const dialogues = { [dialogueMaraVenn.id]: dialogueMaraVenn };
 const itemsById: Record<string, ItemDisplayData> = {
@@ -50,6 +56,16 @@ const itemsById: Record<string, ItemDisplayData> = {
     imageAsset: itemRapier.imageAsset,
   },
 };
+const factionsById = Object.fromEntries(factions.map((f) => [f.id, f]));
+const rosterEntries: RosterEntryData[] = actors.map((a) => ({
+  id: a.id,
+  name: a.name,
+  title: a.title,
+  description: a.description,
+  imageAsset: a.imageAsset,
+  factionNames: a.factionIds.map((fid) => factionsById[fid]?.name ?? fid),
+  dialogueId: a.dialogueId,
+}));
 
 const ENDEAVOR_ID = "endeavor_the_missing_broadsheet";
 
@@ -216,6 +232,7 @@ function App() {
         onClose={() => setDrawerOpen(false)}
         endeavorTitles={{ [endeavor.id]: endeavor.title }}
         items={itemsById}
+        roster={rosterEntries}
       />
       <MinigameOverlay />
       <DialogueOverlay

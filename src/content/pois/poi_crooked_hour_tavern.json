@@ -3,7 +3,7 @@
   "name": "The Crooked Hour",
   "description": "A tavern with a floor that slopes toward the door and a barkeep who's heard every secret Valdeombra has to sell. Candle stubs gutter in bottle-glass sconces; the ale is cheap enough that no one asks questions about who's buying.",
   "isUnlocked": true,
-  "imageAsset": "/content/assets/images/pois/crooked_hour_tavern.webp",
+  "imageAsset": "/content/assets/images/pois/crooked_hour_tavern.jpg",
   "entrySoundAsset": "/content/assets/audio/crooked_hour_tavern_entry.mp3",
   "districtId": "district_lantern_ward",
   "costShifts": 1,

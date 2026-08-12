@@ -3,7 +3,7 @@
   "name": "Mara Venn",
   "description": "A fixture at the Crooked Hour's back tables, more trusted by the house than most of its actual runners — and she hears more sitting there than most watchmen do walking a beat. Sharp-eyed, unhurried, and openly unimpressed by rank.",
   "isUnlocked": true,
-  "imageAsset": "/content/assets/images/actors/mara_venn.webp",
+  "imageAsset": "/content/assets/images/actors/mara_venn.jpg",
   "poiId": "poi_crooked_hour_tavern",
   "factionIds": ["faction_wagering_ring"],
   "title": "Wagering Ring Regular",

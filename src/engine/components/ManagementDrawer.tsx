@@ -20,12 +20,28 @@ export interface ItemDisplayData {
   imageAsset: string;
 }
 
-type ManagementTab = "CASE_BOARD" | "ENDEAVORS" | "INVENTORY";
+// Same content-derived-props pattern as ItemDisplayData, but this is the
+// *full* roster (every actor) — met-status filtering happens in this
+// component against the live `dialogueProgress` store slice, not here,
+// mirroring the Inventory tab's existing split (items = content shape,
+// inventory = store state, combined at render time).
+export interface RosterEntryData {
+  id: string;
+  name: string;
+  title: string;
+  description: string;
+  imageAsset?: string;
+  factionNames: string[];
+  dialogueId: string;
+}
+
+type ManagementTab = "CASE_BOARD" | "ENDEAVORS" | "INVENTORY" | "ROSTER";
 
 const TABS: Array<{ id: ManagementTab; label: string }> = [
   { id: "CASE_BOARD", label: "Case Board" },
   { id: "ENDEAVORS", label: "Endeavors" },
   { id: "INVENTORY", label: "Inventory" },
+  { id: "ROSTER", label: "Roster" },
 ];
 
 export interface ManagementDrawerProps {
@@ -33,9 +49,10 @@ export interface ManagementDrawerProps {
   onClose: () => void;
   endeavorTitles: Record<string, string>;
   items: Record<string, ItemDisplayData>;
+  roster: RosterEntryData[];
 }
 
-export function ManagementDrawer({ isOpen, onClose, endeavorTitles, items }: ManagementDrawerProps) {
+export function ManagementDrawer({ isOpen, onClose, endeavorTitles, items, roster }: ManagementDrawerProps) {
   const [tab, setTab] = useState<ManagementTab>("CASE_BOARD");
   const [isConfirmingReset, setConfirmingReset] = useState(false);
   const unlockedClues = usePlayerStore((state) => state.unlockedClues);
@@ -44,6 +61,8 @@ export function ManagementDrawer({ isOpen, onClose, endeavorTitles, items }: Man
   const resetProgress = usePlayerStore((state) => state.resetProgress);
   const worldClock = usePlayerStore((state) => state.worldClock);
   const devSetWorldClock = usePlayerStore((state) => state.devSetWorldClock);
+  const dialogueProgress = usePlayerStore((state) => state.dialogueProgress);
+  const metRoster = roster.filter((entry) => dialogueProgress[entry.dialogueId] !== undefined);
 
   return (
     <AnimatePresence>
@@ -133,6 +152,33 @@ export function ManagementDrawer({ isOpen, onClose, endeavorTitles, items }: Man
                 </ul>
               ) : (
                 <p className="text-indigo-400">Empty.</p>
+              )
+            ) : null}
+            {tab === "ROSTER" ? (
+              metRoster.length ? (
+                <ul className="flex flex-col gap-4">
+                  {metRoster.map((entry) => (
+                    <li key={entry.id} className="flex gap-3">
+                      {entry.imageAsset ? (
+                        <AssetFallback
+                          src={entry.imageAsset}
+                          alt={entry.name}
+                          className="h-16 w-16 flex-none rounded object-cover"
+                        />
+                      ) : null}
+                      <div>
+                        {entry.name ? <p className="font-medium">{entry.name}</p> : null}
+                        {entry.title ? <p className="text-indigo-400">{entry.title}</p> : null}
+                        {entry.factionNames.length > 0 ? (
+                          <p className="text-indigo-400">{entry.factionNames.join(", ")}</p>
+                        ) : null}
+                        {entry.description ? <p className="mt-1 text-indigo-300">{entry.description}</p> : null}
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="text-indigo-400">You haven&apos;t met anyone yet.</p>
               )
             ) : null}
           </div>
