@@ -4,6 +4,8 @@ A 17th-century swashbuckler fantasy point-and-click web simulation, built on the
 
 Set in the city of Valdeombra — cynical street-level intrigue, noble rivalries, and low, subtle magic, in the spirit of *Garrett P.I.*, *Fafhrd and the Gray Mouser*, and *Notre-Dame de Paris*. Even violence goes through paperwork in this city.
 
+**[Play in your browser](https://gsoster.github.io/broadsheet-rapier/)** (GitHub Pages, deployed from `main` on every push).
+
 ## Tech Stack
 
 React (TypeScript, strict) · Vite · Tailwind CSS v4 · Zustand · Zod · Framer Motion · Vitest
