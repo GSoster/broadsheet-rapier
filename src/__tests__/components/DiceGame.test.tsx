@@ -62,7 +62,7 @@ describe("DiceGame", () => {
     render(<DiceGame sourceId="poi_crooked_hour_tavern" random={stubRandomForDice(2, 2)} />); // sum 4, even
     fireEvent.click(screen.getByText("Throw"));
     await waitFor(() => expect(screen.getByText("You win 20 bronze!")).toBeInTheDocument());
-    expect(screen.getByText("Rolled 4")).toBeInTheDocument();
+    expect(screen.getByText("Rolled 4 (Even)")).toBeInTheDocument();
 
     fireEvent.click(screen.getByText("Collect"));
     // 50 + 20 = 70 bronze-equivalent, normalized: 3 silver + 10 bronze
@@ -75,8 +75,10 @@ describe("DiceGame", () => {
     render(<DiceGame sourceId="poi_crooked_hour_tavern" random={stubRandomForDice(1, 2)} />); // sum 3, odd
     fireEvent.click(screen.getByText("Throw"));
     await waitFor(() => expect(screen.getByText("You lose 20 bronze.")).toBeInTheDocument());
+    expect(screen.getByText("Rolled 3 (Odd)")).toBeInTheDocument();
+    expect(screen.queryByText("Collect")).not.toBeInTheDocument();
 
-    fireEvent.click(screen.getByText("Collect"));
+    fireEvent.click(screen.getByText("Continue"));
     // 50 - 20 = 30 bronze-equivalent, normalized: 1 silver + 10 bronze
     expect(usePlayerStore.getState().currencies).toEqual({ gold: 0, silver: 1, bronze: 10 });
     expect(usePlayerStore.getState().activeMinigame).toBeNull();

@@ -95,6 +95,7 @@ function App() {
   const openNode = openDialogue
     ? openDialogue.nodes[resolveDialogueEntryNodeId(openDialogue, dialogueProgress[openDialogue.id])]
     : null;
+  const speakerActor = actors.find((a) => a.id === selectedActorId);
 
   const handleSelectActor = (actorId: string) => {
     setSelectedActorId(actorId);
@@ -220,6 +221,7 @@ function App() {
       <DialogueOverlay
         dialogueId={openDialogueId ?? ""}
         node={openNode}
+        speakerImageAsset={speakerActor?.imageAsset}
         onClose={() => setOpenDialogueId(null)}
       />
     </div>

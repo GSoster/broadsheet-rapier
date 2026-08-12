@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import { ManagementDrawer } from "../../engine/components/ManagementDrawer";
 import { initialPlayerState, usePlayerStore } from "../../engine/store/playerStore";
 
@@ -113,6 +113,62 @@ describe("ManagementDrawer", () => {
 
       expect(usePlayerStore.getState().currencies).toEqual(initialPlayerState.currencies);
       expect(usePlayerStore.getState().unlockedClues).toEqual([]);
+    });
+  });
+
+  describe("World Clock dev tools (dev-only)", () => {
+    it("shows the World Clock dev tools when import.meta.env.DEV is true", () => {
+      render(<ManagementDrawer isOpen onClose={vi.fn()} endeavorTitles={{}} items={{}} />);
+      expect(screen.getByText("World Clock (Dev)")).toBeInTheDocument();
+    });
+
+    it("hides the World Clock dev tools when import.meta.env.DEV is false", () => {
+      vi.stubEnv("DEV", false);
+      render(<ManagementDrawer isOpen onClose={vi.fn()} endeavorTitles={{}} items={{}} />);
+      expect(screen.queryByText("World Clock (Dev)")).not.toBeInTheDocument();
+      vi.unstubAllEnvs();
+    });
+
+    it("cycles Shift forward, wrapping from NIGHT back to MORNING", () => {
+      usePlayerStore.setState({ worldClock: { shift: "NIGHT", day: 1, season: "SPRING", weather: "CLEAR" } });
+      render(<ManagementDrawer isOpen onClose={vi.fn()} endeavorTitles={{}} items={{}} />);
+      const shiftRow = screen.getByText("Shift: NIGHT").parentElement!;
+      fireEvent.click(within(shiftRow).getByText("Next"));
+      expect(usePlayerStore.getState().worldClock.shift).toBe("MORNING");
+    });
+
+    it("cycles Season forward, wrapping from WINTER back to SPRING", () => {
+      usePlayerStore.setState({ worldClock: { shift: "MORNING", day: 1, season: "WINTER", weather: "CLEAR" } });
+      render(<ManagementDrawer isOpen onClose={vi.fn()} endeavorTitles={{}} items={{}} />);
+      const seasonRow = screen.getByText("Season: WINTER").parentElement!;
+      fireEvent.click(within(seasonRow).getByText("Next"));
+      expect(usePlayerStore.getState().worldClock.season).toBe("SPRING");
+    });
+
+    it("cycles Weather forward, wrapping from STORM back to CLEAR", () => {
+      usePlayerStore.setState({ worldClock: { shift: "MORNING", day: 1, season: "SPRING", weather: "STORM" } });
+      render(<ManagementDrawer isOpen onClose={vi.fn()} endeavorTitles={{}} items={{}} />);
+      const weatherRow = screen.getByText("Weather: STORM").parentElement!;
+      fireEvent.click(within(weatherRow).getByText("Next"));
+      expect(usePlayerStore.getState().worldClock.weather).toBe("CLEAR");
+    });
+
+    it("increments the Day and disables the decrement button at day 1", () => {
+      render(<ManagementDrawer isOpen onClose={vi.fn()} endeavorTitles={{}} items={{}} />);
+      const dayRow = screen.getByText("Day: 1").parentElement!;
+      expect(within(dayRow).getByText("−")).toBeDisabled();
+
+      fireEvent.click(within(dayRow).getByText("+"));
+      expect(usePlayerStore.getState().worldClock.day).toBe(2);
+    });
+
+    it("decrements the Day but never below 1", () => {
+      usePlayerStore.setState({ worldClock: { shift: "MORNING", day: 2, season: "SPRING", weather: "CLEAR" } });
+      render(<ManagementDrawer isOpen onClose={vi.fn()} endeavorTitles={{}} items={{}} />);
+      const dayRow = screen.getByText("Day: 2").parentElement!;
+      fireEvent.click(within(dayRow).getByText("−"));
+      expect(usePlayerStore.getState().worldClock.day).toBe(1);
+      expect(within(screen.getByText("Day: 1").parentElement!).getByText("−")).toBeDisabled();
     });
   });
 });

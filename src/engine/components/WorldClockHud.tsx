@@ -1,4 +1,29 @@
 import { usePlayerStore } from "../store/playerStore";
+import type { Season, Shift, Weather } from "../types";
+
+// Plain emoji, not image assets: zero-asset, no path-resolution risk (see
+// resolveAssetUrl.ts's incident), renders everywhere without a network
+// request or a MISSING-placeholder failure mode.
+const SHIFT_ICONS: Record<Shift, string> = {
+  MORNING: "🌅",
+  AFTERNOON: "☀️",
+  EVENING: "🌇",
+  NIGHT: "🌙",
+};
+
+const SEASON_ICONS: Record<Season, string> = {
+  SPRING: "🌱",
+  SUMMER: "🌻",
+  AUTUMN: "🍂",
+  WINTER: "❄️",
+};
+
+const WEATHER_ICONS: Record<Weather, string> = {
+  CLEAR: "🌤️",
+  RAIN: "🌧️",
+  FOG: "🌫️",
+  STORM: "⛈️",
+};
 
 export function WorldClockHud() {
   const worldClock = usePlayerStore((state) => state.worldClock);
@@ -10,11 +35,20 @@ export function WorldClockHud() {
       <div className="flex items-center gap-3">
         <span>Day {worldClock.day}</span>
         <span aria-hidden="true">&middot;</span>
-        <span>{worldClock.shift}</span>
+        <span className="flex items-center gap-1">
+          <span aria-hidden="true">{SHIFT_ICONS[worldClock.shift]}</span>
+          <span>{worldClock.shift}</span>
+        </span>
         <span aria-hidden="true">&middot;</span>
-        <span>{worldClock.season}</span>
+        <span className="flex items-center gap-1">
+          <span aria-hidden="true">{SEASON_ICONS[worldClock.season]}</span>
+          <span>{worldClock.season}</span>
+        </span>
         <span aria-hidden="true">&middot;</span>
-        <span>{worldClock.weather}</span>
+        <span className="flex items-center gap-1">
+          <span aria-hidden="true">{WEATHER_ICONS[worldClock.weather]}</span>
+          <span>{worldClock.weather}</span>
+        </span>
       </div>
       <div className="flex items-center gap-3">
         <span>{currencies.gold}g</span>

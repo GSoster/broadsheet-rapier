@@ -36,6 +36,16 @@ interface PlayerStore extends PlayerState {
    * districts, actors, etc.) — that's the world itself, not progress.
    */
   resetProgress: () => void;
+  /**
+   * Dev-only test aid: directly overwrites part of worldClock, bypassing
+   * the StateCommand pipeline entirely (no event log entry, no
+   * applyCommand). Not a CommandType — cycling season/shift/weather/day for
+   * testing isn't a real player action and shouldn't be constructible from
+   * content-authored command lists. Mirrors resetProgress's precedent of a
+   * store-native dev action rather than a dispatchable command; the
+   * ManagementDrawer UI that calls this is gated on import.meta.env.DEV.
+   */
+  devSetWorldClock: (patch: Partial<PlayerState["worldClock"]>) => void;
 }
 
 function extractPlayerState(store: PlayerStore): PlayerState {
@@ -107,6 +117,10 @@ export const usePlayerStore = create<PlayerStore>()(
 
       resetProgress: () => {
         set({ ...initialPlayerState, eventLog: [] });
+      },
+
+      devSetWorldClock: (patch) => {
+        set((store) => ({ worldClock: { ...store.worldClock, ...patch } }));
       },
     }),
     {

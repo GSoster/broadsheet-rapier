@@ -2,6 +2,12 @@ import { useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { usePlayerStore } from "../store/playerStore";
 import { AssetFallback } from "./AssetFallback";
+import { SEASONS, SHIFTS, WEATHERS } from "../types";
+
+function cycleNext<T extends string>(options: readonly T[], current: T): T {
+  const index = options.indexOf(current);
+  return options[(index + 1) % options.length];
+}
 
 // Content-derived display data, not the Item content type itself —
 // src/engine/ never imports src/content/ directly (web-implementation.md
@@ -36,6 +42,8 @@ export function ManagementDrawer({ isOpen, onClose, endeavorTitles, items }: Man
   const activeEndeavors = usePlayerStore((state) => state.activeEndeavors);
   const inventory = usePlayerStore((state) => state.inventory);
   const resetProgress = usePlayerStore((state) => state.resetProgress);
+  const worldClock = usePlayerStore((state) => state.worldClock);
+  const devSetWorldClock = usePlayerStore((state) => state.devSetWorldClock);
 
   return (
     <AnimatePresence>
@@ -45,7 +53,7 @@ export function ManagementDrawer({ isOpen, onClose, endeavorTitles, items }: Man
           animate={{ x: 0 }}
           exit={{ x: "100%" }}
           transition={{ type: "tween", duration: 0.2 }}
-          className="fixed inset-y-0 right-0 z-50 flex w-80 flex-col border-l border-indigo-900 bg-neutral-950 text-indigo-100"
+          className="fixed inset-y-0 right-0 z-50 flex w-[30rem] flex-col border-l border-indigo-900 bg-neutral-950 text-indigo-100"
         >
           <div className="flex items-center justify-between border-b border-indigo-900 px-4 py-3">
             <h2 className="text-sm font-semibold uppercase tracking-wide">Journal</h2>
@@ -130,6 +138,59 @@ export function ManagementDrawer({ isOpen, onClose, endeavorTitles, items }: Man
           </div>
           {import.meta.env.DEV ? (
             <div className="border-t border-red-900 p-4">
+              <div className="mb-4 flex flex-col gap-2 border-b border-red-900 pb-4">
+                <p className="text-xs uppercase tracking-wide text-red-400">World Clock (Dev)</p>
+                <div className="flex items-center justify-between text-xs text-indigo-100">
+                  <span>Shift: {worldClock.shift}</span>
+                  <button
+                    type="button"
+                    onClick={() => devSetWorldClock({ shift: cycleNext(SHIFTS, worldClock.shift) })}
+                    className="rounded border border-indigo-700 px-2 py-1 uppercase tracking-wide text-indigo-300 hover:border-indigo-500 hover:text-indigo-100"
+                  >
+                    Next
+                  </button>
+                </div>
+                <div className="flex items-center justify-between text-xs text-indigo-100">
+                  <span>Season: {worldClock.season}</span>
+                  <button
+                    type="button"
+                    onClick={() => devSetWorldClock({ season: cycleNext(SEASONS, worldClock.season) })}
+                    className="rounded border border-indigo-700 px-2 py-1 uppercase tracking-wide text-indigo-300 hover:border-indigo-500 hover:text-indigo-100"
+                  >
+                    Next
+                  </button>
+                </div>
+                <div className="flex items-center justify-between text-xs text-indigo-100">
+                  <span>Weather: {worldClock.weather}</span>
+                  <button
+                    type="button"
+                    onClick={() => devSetWorldClock({ weather: cycleNext(WEATHERS, worldClock.weather) })}
+                    className="rounded border border-indigo-700 px-2 py-1 uppercase tracking-wide text-indigo-300 hover:border-indigo-500 hover:text-indigo-100"
+                  >
+                    Next
+                  </button>
+                </div>
+                <div className="flex items-center justify-between text-xs text-indigo-100">
+                  <span>Day: {worldClock.day}</span>
+                  <div className="flex gap-1">
+                    <button
+                      type="button"
+                      onClick={() => devSetWorldClock({ day: Math.max(1, worldClock.day - 1) })}
+                      disabled={worldClock.day <= 1}
+                      className="rounded border border-indigo-700 px-2 py-1 text-indigo-300 disabled:cursor-not-allowed disabled:opacity-40 enabled:hover:border-indigo-500 enabled:hover:text-indigo-100"
+                    >
+                      −
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => devSetWorldClock({ day: worldClock.day + 1 })}
+                      className="rounded border border-indigo-700 px-2 py-1 text-indigo-300 hover:border-indigo-500 hover:text-indigo-100"
+                    >
+                      +
+                    </button>
+                  </div>
+                </div>
+              </div>
               {isConfirmingReset ? (
                 <div className="flex flex-col gap-2">
                   <p className="text-xs text-red-300">Reset all progress? This cannot be undone.</p>

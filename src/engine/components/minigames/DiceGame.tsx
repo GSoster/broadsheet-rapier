@@ -152,7 +152,9 @@ export function DiceGame({ sourceId, random, playSound: playSoundProp = playSoun
           <p className={`text-lg font-semibold ${rollResult.isVictory ? "text-emerald-300" : "text-red-300"}`}>
             {rollResult.isVictory ? `You win ${wager} bronze!` : `You lose ${wager} bronze.`}
           </p>
-          <p className="text-xs text-amber-200">Rolled {rollResult.sum}</p>
+          <p className="text-xs text-amber-200">
+            Rolled {rollResult.sum} ({rollResult.sum % 2 === 0 ? "Even" : "Odd"})
+          </p>
         </div>
       ) : (
         <div className="flex items-center gap-3">
@@ -180,13 +182,13 @@ export function DiceGame({ sourceId, random, playSound: playSoundProp = playSoun
         Balance: {currencies.gold}g {currencies.silver}s {currencies.bronze}b
       </p>
 
-      {phase === "result" ? (
+      {phase === "result" && rollResult ? (
         <button
           type="button"
           onClick={collect}
           className="rounded border border-amber-600 bg-amber-900/60 px-4 py-2 text-sm uppercase tracking-wide text-amber-100 hover:bg-amber-800/60"
         >
-          Collect
+          {rollResult.isVictory ? "Collect" : "Continue"}
         </button>
       ) : (
         <div className="flex items-center gap-3">

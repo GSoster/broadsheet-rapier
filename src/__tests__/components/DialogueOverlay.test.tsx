@@ -70,4 +70,29 @@ describe("DialogueOverlay", () => {
     fireEvent.click(screen.getByText("Ask again"));
     expect(onClose).not.toHaveBeenCalled();
   });
+
+  it("renders a Close button that calls onClose without dispatching any choice", () => {
+    const onClose = vi.fn();
+    render(<DialogueOverlay dialogueId="dialogue_mara_venn" node={node} onClose={onClose} />);
+    fireEvent.click(screen.getByText("Close"));
+    expect(onClose).toHaveBeenCalledTimes(1);
+    expect(usePlayerStore.getState().dialogueProgress).toEqual({});
+  });
+
+  it("renders no portrait image when speakerImageAsset is omitted", () => {
+    render(<DialogueOverlay dialogueId="dialogue_mara_venn" node={node} onClose={vi.fn()} />);
+    expect(screen.queryByRole("img")).not.toBeInTheDocument();
+  });
+
+  it("renders the speaker's portrait when speakerImageAsset is provided", () => {
+    render(
+      <DialogueOverlay
+        dialogueId="dialogue_mara_venn"
+        node={node}
+        speakerImageAsset="/content/assets/images/actors/mara_venn.webp"
+        onClose={vi.fn()}
+      />
+    );
+    expect(screen.getByRole("img", { name: "Mara Venn" })).toBeInTheDocument();
+  });
 });
