@@ -2,7 +2,7 @@
 
 A 17th-century swashbuckler fantasy point-and-click web simulation, built on the **Thornwall** engine.
 
-Set in the city of Valdeombra — cynical street-level intrigue, noble rivalries, and low, subtle magic, in the spirit of *Garrett P.I.*, *Fafhrd and the Gray Mouser*, and *Notre-Dame de Paris*.
+Set in the city of Valdeombra — cynical street-level intrigue, noble rivalries, and low, subtle magic, in the spirit of *Garrett P.I.*, *Fafhrd and the Gray Mouser*, and *Notre-Dame de Paris*. Even violence goes through paperwork in this city.
 
 ## Tech Stack
 
