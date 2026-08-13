@@ -1,0 +1,8 @@
+{
+  "id": "item_vantry_rapier",
+  "name": "Vantry's Rapier",
+  "description": "Duro Vantry's own blade, forfeit along with the debt he came to collect — better steel than anything a man drowning in twelve silver could ever have afforded.",
+  "isUnlocked": true,
+  "imageAsset": "/content/assets/images/items/vantry_rapier.jpg",
+  "stackable": false
+}

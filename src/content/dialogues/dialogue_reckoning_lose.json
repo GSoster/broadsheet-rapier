@@ -1,0 +1,31 @@
+{
+  "id": "dialogue_reckoning_lose",
+  "startNodeId": "node_defeat",
+  "nodes": {
+    "node_defeat": {
+      "id": "node_defeat",
+      "speaker": "Duro Vantry",
+      "text": "He steps back, satisfied, wiping his blade. \"Debt's settled my way, then.\" Around you, the crowd's already losing interest, moving on to whatever's next. Nobody paid to see the second lose, they paid to see it settled.",
+      "choices": [
+        {
+          "id": "choice_leave_widowmaker",
+          "text": "Leave the alley.",
+          "commands": [
+            {
+              "type": "COMMAND_ADJUST_REPUTATION",
+              "payload": { "targetType": "faction", "targetId": "faction_wagering_ring", "amount": -10 }
+            },
+            {
+              "type": "COMMAND_ADVANCE_ENDEAVOR_PHASE",
+              "payload": {
+                "endeavorId": "endeavor_a_debt_in_steel",
+                "nextPhaseId": "phase_resolved",
+                "unlocksNodesOnComplete": []
+              }
+            }
+          ]
+        }
+      ]
+    }
+  }
+}

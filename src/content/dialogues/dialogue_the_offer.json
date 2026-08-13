@@ -1,0 +1,134 @@
+{
+  "id": "dialogue_the_offer",
+  "startNodeId": "node_first_offer",
+  "nodes": {
+    "node_first_offer": {
+      "id": "node_first_offer",
+      "speaker": "Anselm Draye",
+      "text": "He grabs your sleeve, low and fast. \"Take my place. Please. Whatever's owed, I'll pay double, and there's a rapier in it too, Vantry's own if you win it off him, better steel than anything I could afford you otherwise.\"",
+      "choices": [
+        {
+          "id": "choice_accept_swap_first",
+          "text": "\"I'll fight in your place.\"",
+          "nextNodeId": "node_pre_duel",
+          "commands": []
+        },
+        {
+          "id": "choice_decline_swap_first",
+          "text": "\"Find someone else.\"",
+          "nextNodeId": "node_pressure",
+          "commands": []
+        }
+      ]
+    },
+    "node_pressure": {
+      "id": "node_pressure",
+      "speaker": "Narration",
+      "text": "The crowd's noticed the delay. Someone near the back starts a slow, mocking clap. Vantry hasn't moved, but he's watching now. Anselm's grip tightens. \"They came to see steel move, not to wait on my nerve. Please.\"",
+      "choices": [
+        {
+          "id": "choice_accept_swap_second",
+          "text": "\"Fine. I'll do it.\"",
+          "nextNodeId": "node_pre_duel",
+          "commands": []
+        },
+        {
+          "id": "choice_decline_swap_second",
+          "text": "\"I said no.\"",
+          "nextNodeId": "node_no_way_out",
+          "commands": []
+        }
+      ]
+    },
+    "node_no_way_out": {
+      "id": "node_no_way_out",
+      "speaker": "Duro Vantry",
+      "text": "He looks past Anselm entirely, straight at you, and there's nothing unfriendly in it, which is worse. \"You're standing where his second stands. That's the whole of the custom. Doesn't much matter who holds the blade, only that someone does.\"",
+      "choices": [
+        {
+          "id": "choice_grip_the_rapier",
+          "text": "Grip the rapier.",
+          "nextNodeId": "node_pre_duel",
+          "commands": []
+        },
+        {
+          "id": "choice_no_walking_away",
+          "text": "There's no walking away now.",
+          "nextNodeId": "node_pre_duel",
+          "commands": []
+        }
+      ]
+    },
+    "node_pre_duel": {
+      "id": "node_pre_duel",
+      "speaker": "Narration",
+      "text": "Anselm steps back into the crowd. Vantry draws.",
+      "choices": [
+        {
+          "id": "choice_begin_duel",
+          "text": "Begin the duel.",
+          "commands": [
+            {
+              "type": "COMMAND_ADVANCE_ENDEAVOR_PHASE",
+              "payload": {
+                "endeavorId": "endeavor_a_debt_in_steel",
+                "nextPhaseId": "phase_the_duel",
+                "unlocksNodesOnComplete": []
+              }
+            },
+            {
+              "type": "COMMAND_START_MINIGAME",
+              "payload": {
+                "type": "DUEL",
+                "sourceId": "poi_widowmaker_alley",
+                "config": {
+                  "opponentId": "actor_duro_vantry",
+                  "opponentName": "Duro Vantry",
+                  "opponentStartingEnergy": 100,
+                  "opponentStartingPoise": 80,
+                  "allowFlee": false
+                },
+                "onSuccessCommands": [
+                  {
+                    "type": "COMMAND_ADVANCE_ENDEAVOR_PHASE",
+                    "payload": {
+                      "endeavorId": "endeavor_a_debt_in_steel",
+                      "nextPhaseId": "phase_the_reckoning",
+                      "unlocksNodesOnComplete": []
+                    }
+                  },
+                  {
+                    "type": "COMMAND_ENTER_DIALOGUE_NODE",
+                    "payload": { "dialogueId": "dialogue_reckoning_win", "nodeId": "node_victory" }
+                  },
+                  {
+                    "type": "COMMAND_OPEN_DIALOGUE",
+                    "payload": { "dialogueId": "dialogue_reckoning_win" }
+                  }
+                ],
+                "onFailureCommands": [
+                  {
+                    "type": "COMMAND_ADVANCE_ENDEAVOR_PHASE",
+                    "payload": {
+                      "endeavorId": "endeavor_a_debt_in_steel",
+                      "nextPhaseId": "phase_the_reckoning",
+                      "unlocksNodesOnComplete": []
+                    }
+                  },
+                  {
+                    "type": "COMMAND_ENTER_DIALOGUE_NODE",
+                    "payload": { "dialogueId": "dialogue_reckoning_lose", "nodeId": "node_defeat" }
+                  },
+                  {
+                    "type": "COMMAND_OPEN_DIALOGUE",
+                    "payload": { "dialogueId": "dialogue_reckoning_lose" }
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  }
+}

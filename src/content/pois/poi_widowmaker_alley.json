@@ -1,0 +1,11 @@
+{
+  "id": "poi_widowmaker_alley",
+  "name": "Widowmaker Alley",
+  "description": "Officially filed as District Filing 114, an Instrument of Debt Resolution site — everyone who actually uses it just calls it Widowmaker Alley. Narrower than its reputation, lanterns strung wall to wall, a loose ring of onlookers already claiming the good footing.",
+  "isUnlocked": false,
+  "imageAsset": "/content/assets/images/pois/widowmaker_alley.jpg",
+  "districtId": "district_lantern_ward",
+  "costShifts": 1,
+  "availableShifts": ["EVENING", "NIGHT"],
+  "actorIds": ["actor_duro_vantry"]
+}

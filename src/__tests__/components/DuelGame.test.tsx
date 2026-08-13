@@ -60,6 +60,23 @@ describe("DuelGame", () => {
     expect(screen.getByText("Taunt")).not.toBeDisabled();
   });
 
+  it("hides Flee and shows a fallback message when the config disallows it", () => {
+    usePlayerStore.setState({
+      activeMinigame: makeDuelMinigame({
+        config: {
+          opponentId: "actor_placeholder_opponent",
+          opponentName: "Placeholder Rival",
+          opponentStartingEnergy: 100,
+          opponentStartingPoise: 100,
+          allowFlee: false,
+        },
+      }),
+    });
+    render(<DuelGame sourceId="actor_placeholder_opponent" />);
+    expect(screen.queryByText("Flee")).not.toBeInTheDocument();
+    expect(screen.getByText("There's no retreat from this duel.")).toBeInTheDocument();
+  });
+
   it("Flee clears activeMinigame without applying any consequence commands", () => {
     usePlayerStore.setState({
       activeMinigame: makeDuelMinigame({
@@ -120,7 +137,12 @@ describe("DuelGame", () => {
     // back every turn per chooseOpponentAction's heuristics. 100 / 15 energy
     // takes 7 hits to reach 0.
     for (let i = 0; i < 7; i++) {
-      fireEvent.click(screen.getByText("Taunt"));
+      // getByRole (not getByText): after the first turn resolves, the duel
+      // log itself contains a bolded "Taunt" (see DuelGame's action-name
+      // highlighting) — getByText("Taunt") would then match both the button
+      // and the log entry, which is ambiguous. Scoping to the button role
+      // is both the fix and the more correct query regardless.
+      fireEvent.click(screen.getByRole("button", { name: "Taunt" }));
       advance();
     }
     expect(screen.getByText("Defeated.")).toBeInTheDocument();

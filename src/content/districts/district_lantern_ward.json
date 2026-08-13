@@ -8,5 +8,5 @@
   "controllingFactionId": "faction_city_watch",
   "factionInfluence": { "faction_city_watch": 55 },
   "settlementId": "settlement_valdeombra_city",
-  "poiIds": ["poi_crooked_hour_tavern"]
+  "poiIds": ["poi_crooked_hour_tavern", "poi_widowmaker_alley"]
 }

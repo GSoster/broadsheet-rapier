@@ -77,7 +77,12 @@ export function DialogueOverlay({ dialogueId, node, speakerImageAsset }: Dialogu
             Close
           </button>
         </div>
-        <p className="text-sm italic text-indigo-200">&ldquo;{node.text}&rdquo;</p>
+        {/* No added quote marks around node.text: content is free to mix
+            third-person narration with its own quoted speech (see
+            dialogue_the_challenge.json for an example) — wrapping the whole
+            thing in curly quotes here would double up on that and read as
+            two levels of quotation, not one. */}
+        <p className="text-sm italic text-indigo-200">{node.text}</p>
         <div className="flex flex-col gap-2 border-t border-indigo-900 pt-4">
           {node.choices.map((choice) => {
             const isAvailable = evaluateDialogueRequirement(playerState, choice.requires, node.id, dialogueId);

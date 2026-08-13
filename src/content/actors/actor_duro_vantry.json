@@ -1,0 +1,11 @@
+{
+  "id": "actor_duro_vantry",
+  "name": "Duro Vantry",
+  "description": "The Wagering Ring's own blade for hire, called in whenever a debt needs settling the old-fashioned way. Unhurried, unbothered, and very good at what he does.",
+  "isUnlocked": false,
+  "imageAsset": "/content/assets/images/actors/duro_vantry.jpg",
+  "poiId": "poi_widowmaker_alley",
+  "factionIds": ["faction_wagering_ring"],
+  "title": "The Ring's Second",
+  "dialogueId": "dialogue_duro_vantry_default"
+}

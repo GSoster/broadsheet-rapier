@@ -1,0 +1,11 @@
+{
+  "id": "actor_bookkeeper",
+  "name": "The Bookkeeper",
+  "description": "His real name has never made it into the Ring's own ledgers, let alone anyone else's. He reads a debt the way another man reads a shipping manifest — flat, unhurried, and entirely uninterested in whether you'd rather he didn't.",
+  "isUnlocked": true,
+  "imageAsset": "/content/assets/images/actors/bookkeeper.jpg",
+  "poiId": "poi_crooked_hour_tavern",
+  "factionIds": ["faction_wagering_ring"],
+  "title": "Wagering Ring Bookkeeper",
+  "dialogueId": "dialogue_bookkeeper_default"
+}

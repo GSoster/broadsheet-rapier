@@ -53,6 +53,13 @@ export interface DuelConfig {
   opponentStartingEnergy: number;
   opponentStartingPoise: number;
   startingDistance?: DistanceState; // default OUT_OF_MEASURE if omitted
+  // Whether the player can back out via "Flee" (COMMAND_CANCEL_MINIGAME)
+  // before a winner is decided — default true if omitted, matching every
+  // DUEL authored before this field existed. A story-critical duel with no
+  // way back into it once fled (no re-trigger path if the player leaves)
+  // should author this false, or Flee would let the player permanently
+  // strand the Endeavor mid-phase. See docs/decisions.md.
+  allowFlee?: boolean;
 }
 
 // A discriminated union keyed on `type` — DICE and DUEL now have real
@@ -246,6 +253,7 @@ const DuelConfigSchema = z
     opponentStartingEnergy: z.number(),
     opponentStartingPoise: z.number(),
     startingDistance: z.enum(["OUT_OF_MEASURE", "IN_MEASURE", "CLOSE_QUARTERS"]).optional(),
+    allowFlee: z.boolean().optional(),
   })
   .strict();
 

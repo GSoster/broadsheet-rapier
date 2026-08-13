@@ -13,10 +13,24 @@ import { DialogueOverlay } from "./engine/components/DialogueOverlay";
 import settlementRaw from "./content/settlements/settlement_valdeombra_city.json";
 import districtRaw from "./content/districts/district_lantern_ward.json";
 import poiRaw from "./content/pois/poi_crooked_hour_tavern.json";
+import poiWidowmakerAlleyRaw from "./content/pois/poi_widowmaker_alley.json";
 import actorRaw from "./content/actors/actor_mara_venn.json";
+import actorBookkeeperRaw from "./content/actors/actor_bookkeeper.json";
+import actorAnselmDrayeRaw from "./content/actors/actor_anselm_draye.json";
+import actorDuroVantryRaw from "./content/actors/actor_duro_vantry.json";
 import endeavorRaw from "./content/endeavors/endeavor_the_missing_broadsheet.json";
+import endeavorDebtInSteelRaw from "./content/endeavors/endeavor_a_debt_in_steel.json";
 import dialogueMaraVennRaw from "./content/dialogues/dialogue_mara_venn.json";
+import dialogueBookkeeperDefaultRaw from "./content/dialogues/dialogue_bookkeeper_default.json";
+import dialogueDuroVantryDefaultRaw from "./content/dialogues/dialogue_duro_vantry_default.json";
+import dialogueTheChallengeRaw from "./content/dialogues/dialogue_the_challenge.json";
+import dialogueAnselmRecruitRaw from "./content/dialogues/dialogue_anselm_recruit.json";
+import dialogueWidowmakerArrivalRaw from "./content/dialogues/dialogue_widowmaker_arrival.json";
+import dialogueTheOfferRaw from "./content/dialogues/dialogue_the_offer.json";
+import dialogueReckoningWinRaw from "./content/dialogues/dialogue_reckoning_win.json";
+import dialogueReckoningLoseRaw from "./content/dialogues/dialogue_reckoning_lose.json";
 import itemRapierRaw from "./content/items/item_rapier.json";
+import itemVantryRapierRaw from "./content/items/item_vantry_rapier.json";
 import factionCityWatchRaw from "./content/factions/faction_city_watch.json";
 import factionWageringRingRaw from "./content/factions/faction_wagering_ring.json";
 import { SettlementSchema } from "./content/schemas/settlement.schema";
@@ -39,27 +53,64 @@ import { isNodeUnlocked } from "./engine/utils/isNodeUnlocked";
 const settlement = loadContent(SettlementSchema, settlementRaw, "settlement_valdeombra_city");
 const district = loadContent(DistrictSchema, districtRaw, "district_lantern_ward");
 const poi = loadContent(PoiSchema, poiRaw, "poi_crooked_hour_tavern");
+const poiWidowmakerAlley = loadContent(PoiSchema, poiWidowmakerAlleyRaw, "poi_widowmaker_alley");
 const actor = loadContent(ActorSchema, actorRaw, "actor_mara_venn");
+const actorBookkeeper = loadContent(ActorSchema, actorBookkeeperRaw, "actor_bookkeeper");
+const actorAnselmDraye = loadContent(ActorSchema, actorAnselmDrayeRaw, "actor_anselm_draye");
+const actorDuroVantry = loadContent(ActorSchema, actorDuroVantryRaw, "actor_duro_vantry");
 const endeavor = loadContent(EndeavorSchema, endeavorRaw, "endeavor_the_missing_broadsheet");
+const endeavorDebtInSteel = loadContent(EndeavorSchema, endeavorDebtInSteelRaw, "endeavor_a_debt_in_steel");
 const dialogueMaraVenn = loadContent(DialogueSchema, dialogueMaraVennRaw, "dialogue_mara_venn");
+const dialogueBookkeeperDefault = loadContent(
+  DialogueSchema,
+  dialogueBookkeeperDefaultRaw,
+  "dialogue_bookkeeper_default"
+);
+const dialogueDuroVantryDefault = loadContent(
+  DialogueSchema,
+  dialogueDuroVantryDefaultRaw,
+  "dialogue_duro_vantry_default"
+);
+const dialogueTheChallenge = loadContent(DialogueSchema, dialogueTheChallengeRaw, "dialogue_the_challenge");
+const dialogueAnselmRecruit = loadContent(DialogueSchema, dialogueAnselmRecruitRaw, "dialogue_anselm_recruit");
+const dialogueWidowmakerArrival = loadContent(
+  DialogueSchema,
+  dialogueWidowmakerArrivalRaw,
+  "dialogue_widowmaker_arrival"
+);
+const dialogueTheOffer = loadContent(DialogueSchema, dialogueTheOfferRaw, "dialogue_the_offer");
+const dialogueReckoningWin = loadContent(DialogueSchema, dialogueReckoningWinRaw, "dialogue_reckoning_win");
+const dialogueReckoningLose = loadContent(DialogueSchema, dialogueReckoningLoseRaw, "dialogue_reckoning_lose");
 const itemRapier = loadContent(ItemSchema, itemRapierRaw, "item_rapier");
+const itemVantryRapier = loadContent(ItemSchema, itemVantryRapierRaw, "item_vantry_rapier");
 const factionCityWatch = loadContent(FactionSchema, factionCityWatchRaw, "faction_city_watch");
 const factionWageringRing = loadContent(FactionSchema, factionWageringRingRaw, "faction_wagering_ring");
 
-const pois = [poi];
-const actors = [actor];
+const pois = [poi, poiWidowmakerAlley];
+const actors = [actor, actorBookkeeper, actorAnselmDraye, actorDuroVantry];
 const factions = [factionCityWatch, factionWageringRing];
-const endeavors = [endeavor];
+const endeavors = [endeavor, endeavorDebtInSteel];
 const endeavorsById = Object.fromEntries(endeavors.map((e) => [e.id, e]));
 
-const dialogues = { [dialogueMaraVenn.id]: dialogueMaraVenn };
-const itemsById: Record<string, ItemDisplayData> = {
-  [itemRapier.id]: {
-    name: itemRapier.name,
-    description: itemRapier.description,
-    imageAsset: itemRapier.imageAsset,
-  },
-};
+const dialogueList = [
+  dialogueMaraVenn,
+  dialogueBookkeeperDefault,
+  dialogueDuroVantryDefault,
+  dialogueTheChallenge,
+  dialogueAnselmRecruit,
+  dialogueWidowmakerArrival,
+  dialogueTheOffer,
+  dialogueReckoningWin,
+  dialogueReckoningLose,
+];
+const dialogues = Object.fromEntries(dialogueList.map((d) => [d.id, d]));
+const itemList = [itemRapier, itemVantryRapier];
+const itemsById: Record<string, ItemDisplayData> = Object.fromEntries(
+  itemList.map((item) => [
+    item.id,
+    { name: item.name, description: item.description, imageAsset: item.imageAsset },
+  ])
+);
 const factionsById = Object.fromEntries(factions.map((f) => [f.id, f]));
 const rosterEntries: RosterEntryData[] = actors.map((a) => ({
   id: a.id,
@@ -144,7 +195,16 @@ function App() {
   const openNode = openDialogue
     ? openDialogue.nodes[resolveDialogueEntryNodeId(openDialogue, dialogueProgress[openDialogue.id])]
     : null;
-  const speakerActor = actors.find((a) => a.dialogueId === activeDialogue?.dialogueId);
+  // Matched by display name, not Actor.dialogueId — a scene an Actor
+  // *appears* in (autoStartOnEnter/autoDialogueOnEnter, or a minigame's
+  // onSuccessCommands/onFailureCommands opening a reckoning dialogue) is
+  // very often not that Actor's own home dialogue (see
+  // docs/features/content_a_debt_in_steel.md's dialogueId-split design and
+  // game-design-spec.md Open Design Gap #14). DialogueNode.speaker is
+  // already a free-text display string that content authors keep in sync
+  // with the speaking Actor's name, so matching on it resolves a portrait
+  // for every scene that Actor speaks in, not just their own.
+  const speakerActor = actors.find((a) => a.name === openNode?.speaker);
 
   const handleSelectActor = (actorId: string) => {
     setSelectedActorId(actorId);
@@ -269,7 +329,7 @@ function App() {
       <ManagementDrawer
         isOpen={isDrawerOpen}
         onClose={() => setDrawerOpen(false)}
-        endeavorTitles={{ [endeavor.id]: endeavor.title }}
+        endeavorTitles={Object.fromEntries(endeavors.map((e) => [e.id, e.title]))}
         items={itemsById}
         roster={rosterEntries}
       />

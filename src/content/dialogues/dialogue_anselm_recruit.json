@@ -1,0 +1,49 @@
+{
+  "id": "dialogue_anselm_recruit",
+  "startNodeId": "node_ask_second",
+  "nodes": {
+    "node_ask_second": {
+      "id": "node_ask_second",
+      "speaker": "Anselm Draye",
+      "text": "\"You saw that. Twelve silver I don't have, and now a blade I've never held with any conviction.\" He's not quite looking at you. \"I need someone at my shoulder Thursday. Just to stand there. Will you?\"",
+      "choices": [
+        {
+          "id": "choice_agree_to_stand",
+          "text": "\"I'll stand with you.\"",
+          "nextNodeId": "node_fee_offered",
+          "commands": []
+        },
+        {
+          "id": "choice_decline_second",
+          "text": "\"This isn't my fight.\"",
+          "commands": []
+        }
+      ]
+    },
+    "node_fee_offered": {
+      "id": "node_fee_offered",
+      "speaker": "Anselm Draye",
+      "text": "Relief, badly hidden. \"Three silver now, whatever happens Thursday. You're owed that much for the company alone.\"",
+      "choices": [
+        {
+          "id": "choice_accept_fee",
+          "text": "\"Agreed.\"",
+          "commands": [
+            {
+              "type": "COMMAND_ADJUST_CURRENCY",
+              "payload": { "denomination": "silver", "amount": 3 }
+            },
+            {
+              "type": "COMMAND_ADVANCE_ENDEAVOR_PHASE",
+              "payload": {
+                "endeavorId": "endeavor_a_debt_in_steel",
+                "nextPhaseId": "phase_arrival_widowmaker",
+                "unlocksNodesOnComplete": ["poi_widowmaker_alley", "actor_duro_vantry"]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  }
+}

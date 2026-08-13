@@ -1,0 +1,57 @@
+{
+  "id": "dialogue_widowmaker_arrival",
+  "startNodeId": "node_arrival",
+  "nodes": {
+    "node_arrival": {
+      "id": "node_arrival",
+      "speaker": "Narration",
+      "text": "Widowmaker Alley is narrower than its reputation. Lanterns have been strung between the walls, and a loose ring of onlookers has already claimed the good footing. Duro Vantry stands apart, rolling his shoulders. Anselm hasn't stopped checking the exits.",
+      "choices": [
+        {
+          "id": "choice_recognized_by_ring",
+          "text": "(A few in the crowd nod your way.)",
+          "requires": {
+            "minFactionReputation": { "factionId": "faction_wagering_ring", "value": 20 }
+          },
+          "nextNodeId": "node_friendly_crowd",
+          "commands": []
+        },
+        {
+          "id": "choice_take_place",
+          "text": "Take your place beside Anselm.",
+          "commands": [
+            {
+              "type": "COMMAND_ADVANCE_ENDEAVOR_PHASE",
+              "payload": {
+                "endeavorId": "endeavor_a_debt_in_steel",
+                "nextPhaseId": "phase_the_offer",
+                "unlocksNodesOnComplete": []
+              }
+            }
+          ]
+        }
+      ]
+    },
+    "node_friendly_crowd": {
+      "id": "node_friendly_crowd",
+      "speaker": "Narration",
+      "text": "Someone passes a flask your way without being asked. Whatever else happens tonight, you're not a stranger here.",
+      "choices": [
+        {
+          "id": "choice_take_place_friendly",
+          "text": "Take your place beside Anselm.",
+          "commands": [
+            {
+              "type": "COMMAND_ADVANCE_ENDEAVOR_PHASE",
+              "payload": {
+                "endeavorId": "endeavor_a_debt_in_steel",
+                "nextPhaseId": "phase_the_offer",
+                "unlocksNodesOnComplete": []
+              }
+            }
+          ]
+        }
+      ]
+    }
+  }
+}

@@ -1,0 +1,18 @@
+{
+  "id": "dialogue_duro_vantry_default",
+  "startNodeId": "node_greeting",
+  "nodes": {
+    "node_greeting": {
+      "id": "node_greeting",
+      "speaker": "Duro Vantry",
+      "text": "He gives you an unhurried once-over and nothing else. \"Nothing to settle between us. Not yet, anyway.\"",
+      "choices": [
+        {
+          "id": "choice_leave_vantry",
+          "text": "Leave it at that.",
+          "commands": []
+        }
+      ]
+    }
+  }
+}

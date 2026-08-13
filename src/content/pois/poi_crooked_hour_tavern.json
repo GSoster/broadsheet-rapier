@@ -8,5 +8,5 @@
   "districtId": "district_lantern_ward",
   "costShifts": 1,
   "availableShifts": ["EVENING", "NIGHT"],
-  "actorIds": ["actor_mara_venn"]
+  "actorIds": ["actor_mara_venn", "actor_bookkeeper", "actor_anselm_draye"]
 }

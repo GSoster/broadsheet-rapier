@@ -61,6 +61,17 @@ const TAUNT_TARGET_FACTION_ID = "faction_wagering_ring";
 
 const AGGRESSIVE_ACTIONS: ReadonlySet<DuelAction> = new Set(["THRUST", "DIRTY_TRICK"]);
 
+// Human-readable labels for the raw DuelAction enum — shared by the log
+// strings below and DuelGame.tsx's action buttons/log highlighting, so the
+// two never drift into two different names for the same action.
+export const ACTION_LABELS: Record<DuelAction, string> = {
+  THRUST: "Thrust",
+  PARRY_RIPOSTE: "Parry & Riposte",
+  FEINT: "Feint",
+  TAUNT: "Taunt",
+  DIRTY_TRICK: "Dirty Trick",
+};
+
 function isLegal(action: DuelAction, distance: DistanceState): boolean {
   if (action === "THRUST") return distance === "IN_MEASURE";
   if (action === "DIRTY_TRICK") return distance === "CLOSE_QUARTERS";
@@ -88,8 +99,8 @@ export function evaluateDuelTurn(
 
   const playerLegal = isLegal(playerAction, distance);
   const opponentLegal = isLegal(opponentAction, distance);
-  if (!playerLegal) log.push(`Your ${playerAction} fails — not at the right distance.`);
-  if (!opponentLegal) log.push(`Opponent's ${opponentAction} fails — not at the right distance.`);
+  if (!playerLegal) log.push(`Your ${ACTION_LABELS[playerAction]} fails — not at the right distance.`);
+  if (!opponentLegal) log.push(`Opponent's ${ACTION_LABELS[opponentAction]} fails — not at the right distance.`);
 
   const playerAttacks = playerLegal && AGGRESSIVE_ACTIONS.has(playerAction);
   const opponentAttacks = opponentLegal && AGGRESSIVE_ACTIONS.has(opponentAction);
@@ -106,18 +117,18 @@ export function evaluateDuelTurn(
   if (playerAttacks && opponentParriesPlayer) {
     const damage = RIPOSTE_COUNTER_DAMAGE;
     player.energy = clampFloor(player.energy - damage);
-    log.push(`Opponent parries your ${playerAction} and ripostes for ${damage} energy.`);
+    log.push(`Opponent parries your ${ACTION_LABELS[playerAction]} and ripostes for ${damage} energy.`);
   } else if (playerAttacks) {
     let damage = playerAction === "THRUST" ? THRUST_DAMAGE : DIRTY_TRICK_DAMAGE;
     if (opponentGuardBroken) {
       damage += GUARD_BREAK_BONUS_DAMAGE;
-      log.push(`Opponent's guard is broken — your ${playerAction} lands doubly hard!`);
+      log.push(`Opponent's guard is broken — your ${ACTION_LABELS[playerAction]} lands doubly hard!`);
     }
     opponent.energy = clampFloor(opponent.energy - damage);
     if (playerAction === "DIRTY_TRICK") {
       opponent.poise = clampFloor(opponent.poise - DIRTY_TRICK_POISE_DRAIN);
     }
-    log.push(`Your ${playerAction} lands for ${damage} energy.`);
+    log.push(`Your ${ACTION_LABELS[playerAction]} lands for ${damage} energy.`);
   } else if (playerAction === "PARRY_RIPOSTE") {
     log.push("You hold your guard.");
   }
@@ -125,7 +136,7 @@ export function evaluateDuelTurn(
   if (opponentAttacks && playerParriesOpponent) {
     const damage = RIPOSTE_COUNTER_DAMAGE;
     opponent.energy = clampFloor(opponent.energy - damage);
-    log.push(`You parry the opponent's ${opponentAction} and riposte for ${damage} energy.`);
+    log.push(`You parry the opponent's ${ACTION_LABELS[opponentAction]} and riposte for ${damage} energy.`);
   } else if (opponentAttacks) {
     let damage = opponentAction === "THRUST" ? THRUST_DAMAGE : DIRTY_TRICK_DAMAGE;
     if (playerGuardBroken) {
@@ -136,7 +147,7 @@ export function evaluateDuelTurn(
     if (opponentAction === "DIRTY_TRICK") {
       player.poise = clampFloor(player.poise - DIRTY_TRICK_POISE_DRAIN);
     }
-    log.push(`Opponent's ${opponentAction} lands for ${damage} energy.`);
+    log.push(`Opponent's ${ACTION_LABELS[opponentAction]} lands for ${damage} energy.`);
   } else if (opponentAction === "PARRY_RIPOSTE") {
     log.push("Opponent holds their guard.");
   }

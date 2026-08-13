@@ -1,0 +1,40 @@
+{
+  "id": "dialogue_the_challenge",
+  "startNodeId": "node_terms_read",
+  "nodes": {
+    "node_terms_read": {
+      "id": "node_terms_read",
+      "speaker": "The Bookkeeper",
+      "text": "He unrolls a strip of paper and reads it the way another man might read a shipping manifest. \"Twelve silver, outstanding since the Feast of Saint Ilona. By the Ring's own charter, the debt may be settled in coin, in kind, or\" — a glance at the man beside him — \"in blood, properly witnessed.\"",
+      "choices": [
+        {
+          "id": "choice_keep_watching",
+          "text": "Keep watching.",
+          "nextNodeId": "node_terms_set",
+          "commands": []
+        }
+      ]
+    },
+    "node_terms_set": {
+      "id": "node_terms_set",
+      "speaker": "The Bookkeeper",
+      "text": "He taps the paper twice, rolls it, tucks it away. \"Filed and witnessed. The instrument is to be settled off Cutpurse Row, three days hence, at dusk. The clerks call it Instrument of Debt Resolution, District Filing 114.\" A dry pause. \"Everyone else calls it Widowmaker Alley. Even violence goes through paperwork in this city.\"",
+      "choices": [
+        {
+          "id": "choice_watch_face_fall",
+          "text": "Watch the debtor's face fall.",
+          "commands": [
+            {
+              "type": "COMMAND_ADVANCE_ENDEAVOR_PHASE",
+              "payload": {
+                "endeavorId": "endeavor_a_debt_in_steel",
+                "nextPhaseId": "phase_the_second",
+                "unlocksNodesOnComplete": ["actor_anselm_draye"]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  }
+}

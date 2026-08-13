@@ -1,0 +1,35 @@
+{
+  "id": "dialogue_reckoning_win",
+  "startNodeId": "node_victory",
+  "nodes": {
+    "node_victory": {
+      "id": "node_victory",
+      "speaker": "Duro Vantry",
+      "text": "He lowers the blade, breathing hard, and there's something almost like respect in it. \"Debt's settled. Ring's satisfied.\" He nods once at the rapier. \"That's yours now, if you can hold it better than he could.\"",
+      "choices": [
+        {
+          "id": "choice_take_winnings",
+          "text": "Take the payment and the rapier.",
+          "commands": [
+            {
+              "type": "COMMAND_ADJUST_CURRENCY",
+              "payload": { "denomination": "silver", "amount": 24 }
+            },
+            {
+              "type": "COMMAND_ADD_ITEM",
+              "payload": { "itemId": "item_vantry_rapier", "quantity": 1 }
+            },
+            {
+              "type": "COMMAND_ADVANCE_ENDEAVOR_PHASE",
+              "payload": {
+                "endeavorId": "endeavor_a_debt_in_steel",
+                "nextPhaseId": "phase_resolved",
+                "unlocksNodesOnComplete": []
+              }
+            }
+          ]
+        }
+      ]
+    }
+  }
+}

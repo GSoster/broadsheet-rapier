@@ -1,0 +1,66 @@
+{
+  "id": "endeavor_a_debt_in_steel",
+  "title": "A Debt in Steel",
+  "description": "A debtor of the Wagering Ring has three days to settle twelve silver he doesn't have — in coin, in kind, or in blood, properly witnessed. Widowmaker Alley is where the paperwork always ends.",
+  "isUnlocked": true,
+  "initialPhaseId": "phase_the_challenge",
+  "autoStartOnEnter": {
+    "poiId": "poi_crooked_hour_tavern",
+    "dialogueId": "dialogue_the_challenge"
+  },
+  "phases": {
+    "phase_the_challenge": {
+      "id": "phase_the_challenge",
+      "objectiveText": "Witness the Bookkeeper read the terms of Anselm Draye's debt.",
+      "nextPhaseOnSuccess": "phase_the_second",
+      "unlocksNodesOnComplete": ["actor_anselm_draye"]
+    },
+    "phase_the_second": {
+      "id": "phase_the_second",
+      "objectiveText": "Anselm Draye is asking for a favor — hear him out.",
+      "nextPhaseOnSuccess": "phase_arrival_widowmaker",
+      "unlocksNodesOnComplete": ["poi_widowmaker_alley", "actor_duro_vantry"],
+      "autoDialogueOnEnter": {
+        "poiId": "poi_crooked_hour_tavern",
+        "dialogueId": "dialogue_anselm_recruit"
+      }
+    },
+    "phase_arrival_widowmaker": {
+      "id": "phase_arrival_widowmaker",
+      "objectiveText": "Stand with Anselm at Widowmaker Alley when the debt comes due.",
+      "nextPhaseOnSuccess": "phase_the_offer",
+      "unlocksNodesOnComplete": [],
+      "autoDialogueOnEnter": {
+        "poiId": "poi_widowmaker_alley",
+        "dialogueId": "dialogue_widowmaker_arrival"
+      }
+    },
+    "phase_the_offer": {
+      "id": "phase_the_offer",
+      "objectiveText": "Anselm wants you to fight in his place. Decide.",
+      "nextPhaseOnSuccess": "phase_the_duel",
+      "unlocksNodesOnComplete": [],
+      "autoDialogueOnEnter": {
+        "poiId": "poi_widowmaker_alley",
+        "dialogueId": "dialogue_the_offer"
+      }
+    },
+    "phase_the_duel": {
+      "id": "phase_the_duel",
+      "objectiveText": "Face Duro Vantry in Anselm's stead.",
+      "nextPhaseOnSuccess": "phase_the_reckoning",
+      "unlocksNodesOnComplete": []
+    },
+    "phase_the_reckoning": {
+      "id": "phase_the_reckoning",
+      "objectiveText": "The duel is over — see how the debt is settled.",
+      "nextPhaseOnSuccess": "phase_resolved",
+      "unlocksNodesOnComplete": []
+    },
+    "phase_resolved": {
+      "id": "phase_resolved",
+      "objectiveText": "The debt is settled, one way or another.",
+      "unlocksNodesOnComplete": []
+    }
+  }
+}

@@ -1,0 +1,11 @@
+{
+  "id": "actor_anselm_draye",
+  "name": "Anselm Draye",
+  "description": "A debtor three days from a duel he never wanted, and increasingly bad at hiding it. Twelve silver was never the real problem — his nerve is.",
+  "isUnlocked": false,
+  "imageAsset": "/content/assets/images/actors/anselm_draye.jpg",
+  "poiId": "poi_crooked_hour_tavern",
+  "factionIds": [],
+  "title": "The Debtor",
+  "dialogueId": "dialogue_anselm_recruit"
+}

@@ -3,6 +3,7 @@ import { motion } from "framer-motion";
 import { usePlayerStore } from "../../store/playerStore";
 import { minigameResolvers } from "../../minigames";
 import {
+  ACTION_LABELS,
   chooseOpponentAction,
   PLAYER_STARTING_ENERGY,
   PLAYER_STARTING_POISE,
@@ -13,19 +14,61 @@ import {
   type DuelOutcome,
 } from "../../minigames/duel";
 import { playSound } from "../../audio/playSound";
+import { Tooltip } from "../Tooltip";
 
 const WIN_SOUND_ASSET = "/content/assets/audio/duel_win.mp3";
 const LOSE_SOUND_ASSET = "/content/assets/audio/duel_lose.mp3";
 
 const RESOLVE_DELAY_MS = 500;
 
-const ACTIONS: Array<{ action: DuelAction; label: string }> = [
-  { action: "THRUST", label: "Thrust" },
-  { action: "PARRY_RIPOSTE", label: "Parry & Riposte" },
-  { action: "FEINT", label: "Feint" },
-  { action: "TAUNT", label: "Taunt" },
-  { action: "DIRTY_TRICK", label: "Dirty Trick" },
-];
+// Button order — labels come from the shared ACTION_LABELS map (duel.ts) so
+// the buttons and the duel log never drift into two different names for the
+// same action.
+const ACTIONS: DuelAction[] = ["THRUST", "PARRY_RIPOSTE", "FEINT", "TAUNT", "DIRTY_TRICK"];
+
+// Player-facing explanations, kept here rather than in duel.ts: ACTION_LABELS
+// is short display text the log itself renders (engine-adjacent), this is
+// longer descriptive copy only ever shown in a UI tooltip.
+const ACTION_DESCRIPTIONS: Record<DuelAction, string> = {
+  THRUST: "A direct strike — only works In Measure. Deals energy damage, more if the opponent's guard is already broken. Parried, it costs you energy instead.",
+  PARRY_RIPOSTE: "Holds your guard. Blocks and counters an incoming Thrust or Dirty Trick for energy damage. Does nothing if the opponent doesn't attack.",
+  FEINT: "Drains the opponent's poise and closes the distance one step. Safe to use at any range.",
+  TAUNT: "Drains the opponent's poise from any range — more if your standing with the Wagering Ring is high enough.",
+  DIRTY_TRICK: "An underhanded strike — only works at Close Quarters. Deals energy damage and extra poise drain, more if the opponent's guard is already broken.",
+};
+
+const DISTANCE_DESCRIPTIONS: Record<DistanceState, string> = {
+  OUT_OF_MEASURE: "Too far apart for Thrust or Dirty Trick. Feint to close the distance.",
+  IN_MEASURE: "Close enough for Thrust. Still too far for a Dirty Trick — Feint again to reach Close Quarters.",
+  CLOSE_QUARTERS: "Close enough for a Dirty Trick. Too close for Thrust to connect.",
+};
+
+const ENERGY_DESCRIPTION = "Health for this duel. Reaches 0 and that side loses.";
+const POISE_DESCRIPTION =
+  "Guard. Once it reaches 0, the next Thrust or Dirty Trick that lands against that side deals bonus damage.";
+
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+// Longest-first so "Parry & Riposte" matches whole, not a partial overlap
+// with a shorter label — not actually reachable with today's five labels
+// (none is a substring of another), but cheap insurance against it becoming
+// true if a future action's label is.
+const ACTION_LABEL_PATTERN = new RegExp(
+  `(${Object.values(ACTION_LABELS)
+    .sort((a, b) => b.length - a.length)
+    .map(escapeRegExp)
+    .join("|")})`,
+  "g"
+);
+
+// Bolds any duel-action name appearing in a log line (e.g. "Your Thrust
+// lands for 15 energy.") without duel.ts needing to know anything about
+// presentation — it only ever emits plain strings.
+function renderLogEntry(entry: string): Array<string | { bold: string }> {
+  return entry.split(ACTION_LABEL_PATTERN).map((part) => (Object.values(ACTION_LABELS).includes(part) ? { bold: part } : part));
+}
 
 function isActionLegal(action: DuelAction, distance: DistanceState): boolean {
   if (action === "THRUST") return distance === "IN_MEASURE";
@@ -63,6 +106,10 @@ export function DuelGame({ random, playSound: playSoundProp = playSound }: DuelG
   const [outcome, setOutcome] = useState<DuelOutcome>("ONGOING");
 
   const opponentName = config?.opponentName ?? "Opponent";
+  // Default true — every DUEL authored before this field existed keeps
+  // Fleeing available; a story-critical duel with no way back in once fled
+  // authors this false instead (see DuelConfig's comment, docs/decisions.md).
+  const allowFlee = config?.allowFlee ?? true;
 
   const chooseAction = (playerAction: DuelAction) => {
     if (phase !== "choosing" || !isActionLegal(playerAction, distance)) return;
@@ -112,25 +159,65 @@ export function DuelGame({ random, playSound: playSoundProp = playSound }: DuelG
       <div className="flex justify-between gap-4">
         <div className="flex-1 text-sm text-stone-200">
           <p>You</p>
-          <p>Energy: {player.energy}</p>
-          <p>Poise: {player.poise}</p>
+          <p>
+            Energy: {player.energy}{" "}
+            <Tooltip label={ENERGY_DESCRIPTION}>
+              <span aria-label="What is Energy?" className="cursor-help text-stone-500">
+                (?)
+              </span>
+            </Tooltip>
+          </p>
+          <p>
+            Poise: {player.poise}{" "}
+            <Tooltip label={POISE_DESCRIPTION}>
+              <span aria-label="What is Poise?" className="cursor-help text-stone-500">
+                (?)
+              </span>
+            </Tooltip>
+          </p>
         </div>
-        <motion.div
-          animate={phase === "resolving" ? { scale: [1, 1.1, 1] } : { scale: 1 }}
-          transition={{ duration: RESOLVE_DELAY_MS / 1000, ease: "easeInOut" }}
-          className="flex items-center text-xs uppercase tracking-wide text-stone-400"
-        >
-          {distance.replace(/_/g, " ")}
-        </motion.div>
+        <Tooltip label={DISTANCE_DESCRIPTIONS[distance]} className="flex-none">
+          <motion.div
+            animate={phase === "resolving" ? { scale: [1, 1.1, 1] } : { scale: 1 }}
+            transition={{ duration: RESOLVE_DELAY_MS / 1000, ease: "easeInOut" }}
+            className="flex cursor-help items-center text-xs uppercase tracking-wide text-stone-400"
+          >
+            {distance.replace(/_/g, " ")}
+          </motion.div>
+        </Tooltip>
         <div className="flex-1 text-right text-sm text-stone-200">
           <p>{opponentName}</p>
-          <p>Energy: {opponent.energy}</p>
-          <p>Poise: {opponent.poise}</p>
+          <p>
+            Energy: {opponent.energy}{" "}
+            <Tooltip label={ENERGY_DESCRIPTION}>
+              <span aria-label="What is Energy?" className="cursor-help text-stone-500">
+                (?)
+              </span>
+            </Tooltip>
+          </p>
+          <p>
+            Poise: {opponent.poise}{" "}
+            <Tooltip label={POISE_DESCRIPTION}>
+              <span aria-label="What is Poise?" className="cursor-help text-stone-500">
+                (?)
+              </span>
+            </Tooltip>
+          </p>
         </div>
       </div>
 
       <div className="h-24 overflow-y-auto rounded border border-stone-700 bg-stone-900/60 p-2 text-xs text-stone-300">
-        {log.length === 0 ? <p className="text-stone-500">The duel begins.</p> : log.map((entry, i) => <p key={i}>{entry}</p>)}
+        {log.length === 0 ? (
+          <p className="text-stone-500">The duel begins.</p>
+        ) : (
+          log.map((entry, i) => (
+            <p key={i}>
+              {renderLogEntry(entry).map((part, j) =>
+                typeof part === "string" ? part : <strong key={j}>{part.bold}</strong>
+              )}
+            </p>
+          ))
+        )}
       </div>
 
       {phase === "result" ? (
@@ -149,29 +236,34 @@ export function DuelGame({ random, playSound: playSoundProp = playSound }: DuelG
       ) : (
         <>
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-            {ACTIONS.map(({ action, label }) => {
+            {ACTIONS.map((action) => {
               const legal = isActionLegal(action, distance);
               return (
-                <button
-                  key={action}
-                  type="button"
-                  onClick={() => chooseAction(action)}
-                  disabled={phase !== "choosing" || !legal}
-                  className="rounded border border-stone-600 bg-stone-800/60 px-3 py-2 text-xs uppercase tracking-wide text-stone-100 disabled:cursor-not-allowed disabled:opacity-40 enabled:hover:bg-stone-700/60"
-                >
-                  {label}
-                </button>
+                <Tooltip key={action} label={ACTION_DESCRIPTIONS[action]} className="w-full">
+                  <button
+                    type="button"
+                    onClick={() => chooseAction(action)}
+                    disabled={phase !== "choosing" || !legal}
+                    className="w-full rounded border border-stone-600 bg-stone-800/60 px-3 py-2 text-xs uppercase tracking-wide text-stone-100 disabled:cursor-not-allowed disabled:opacity-40 enabled:hover:bg-stone-700/60"
+                  >
+                    {ACTION_LABELS[action]}
+                  </button>
+                </Tooltip>
               );
             })}
           </div>
-          <button
-            type="button"
-            onClick={flee}
-            disabled={phase === "resolving"}
-            className="rounded border border-stone-800 px-4 py-2 text-sm uppercase tracking-wide text-stone-400 disabled:cursor-not-allowed disabled:opacity-40 enabled:hover:border-stone-500 enabled:hover:text-stone-100"
-          >
-            Flee
-          </button>
+          {allowFlee ? (
+            <button
+              type="button"
+              onClick={flee}
+              disabled={phase === "resolving"}
+              className="rounded border border-stone-800 px-4 py-2 text-sm uppercase tracking-wide text-stone-400 disabled:cursor-not-allowed disabled:opacity-40 enabled:hover:border-stone-500 enabled:hover:text-stone-100"
+            >
+              Flee
+            </button>
+          ) : (
+            <p className="text-center text-xs uppercase tracking-wide text-stone-600">There's no retreat from this duel.</p>
+          )}
         </>
       )}
     </div>
