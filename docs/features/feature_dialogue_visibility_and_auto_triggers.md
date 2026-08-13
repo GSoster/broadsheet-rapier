@@ -160,10 +160,110 @@ None.
 3. **No content authored yet** exercising `autoDialogueOnEnter` — deliberate, see Reachability. A follow-up Content/Adventure spec would author the actual trigger (e.g. for a scene the "A Debt in Steel" endeavor wants).
 4. Whether `DialogueOverlay` should keep an `onClose` prop at all once closing is store-driven, or whether `App.tsx` should stop rendering it once `activeDialogue` is null (the way `MinigameOverlay` already returns `null` internally when `activeMinigame` is null) — a small structural choice, deferred to implementation, doesn't affect the command/schema design above either way.
 
+## Addendum: auto-starting an endeavor, and triggering while already at the POI
+
+Two gaps found scoping real content against the shipped mechanism above: (a) `autoDialogueOnEnter` can only fire for an endeavor already in `activeEndeavors` (`computePoiEntryEffects` only iterates `Object.entries(activeEndeavors)`), so it structurally cannot trigger the scene that *starts* one; (b) it's only evaluated at POI-selection (`onSelectPoi`), so a second phase's trigger targeting the POI the player is already standing in won't fire until they leave and re-enter.
+
+### Addendum design — `Endeavor.autoStartOnEnter`
+
+```ts
+// endeavor.schema.ts — new top-level field on EndeavorSchema, alongside
+// the existing id/title/description/isUnlocked/initialPhaseId/phases.
+autoStartOnEnter: z
+  .object({
+    poiId: z.string(),
+    dialogueId: z.string(),
+    nodeId: z.string().optional(),
+  })
+  .strict()
+  .optional(),
+```
+
+`EntryEffect` (`src/engine/utils/entryEffects.ts`) gains a third variant:
+
+```ts
+export type EntryEffect =
+  | { type: "SOUND"; asset: string }
+  | { type: "DIALOGUE"; dialogueId: string; nodeId?: string }
+  | { type: "START_ENDEAVOR"; endeavorId: string; initialPhaseId: string };
+```
+
+Kept atomic (one command per effect) rather than a compound "start+dialogue" variant — composes the same way a minigame's `onSuccessCommands` list already does. `computePoiEntryEffects` gains a new parameter (`unlockedNodes: PlayerState["unlockedNodes"]`, needed by the `isUnlocked` guard below — see `feature_node_unlock_rendering.md`, a hard dependency of this addendum) and a second loop over `endeavorsById` (which already contains every endeavor, active or not):
+
+```ts
+for (const endeavorData of Object.values(endeavorsById)) {
+  if (activeEndeavors[endeavorData.id]) continue; // already started — never re-fires, see below
+  const trigger = endeavorData.autoStartOnEnter;
+  if (trigger && trigger.poiId === poi.id && isNodeUnlocked(endeavorData, endeavorData.id, unlockedNodes)) {
+    effects.push({ type: "START_ENDEAVOR", endeavorId: endeavorData.id, initialPhaseId: endeavorData.initialPhaseId });
+    effects.push({ type: "DIALOGUE", dialogueId: trigger.dialogueId, nodeId: trigger.nodeId });
+  }
+}
+```
+
+**Dependency on `feature_node_unlock_rendering.md`, stated plainly:** the `isUnlocked` guard above requires `isNodeUnlocked` to exist. Do not ship this guard as `true`/omitted as a placeholder — `feature_node_unlock_rendering.md`'s helper lands at least alongside this work, not after it. Without it, `autoStartOnEnter` would fire regardless of the endeavor's lock state, which is exactly the class of bug that spec exists to fix everywhere else too.
+
+`executeEntryEffect` (`App.tsx`) gains one branch: `START_ENDEAVOR` dispatches `COMMAND_START_ENDEAVOR` with `{ endeavorId, initialPhaseId }`.
+
+**Re-triggering — confirmed sound, not assumed.** `!activeEndeavors[endeavorId]` is permanently reliable as "not yet started," including forever after completion: nothing in `commands.ts` ever deletes an `activeEndeavors` entry, and a terminal phase (no `nextPhaseOnSuccess`) is represented by staying at that `currentPhaseId` forever (existing deliberate convention, `docs/decisions.md`). Once `COMMAND_START_ENDEAVOR` runs once, the guard is false for the rest of the save, unconditionally.
+
+### Addendum design — phase-change trigger while already at the POI
+
+New `useEffect` in `App()`, alongside the existing district-mount effect:
+
+```ts
+useEffect(() => {
+  if (currentLocation.poiId && activeDialogue === null) {
+    const target = pois.find((p) => p.id === currentLocation.poiId);
+    if (target) {
+      computePoiEntryEffects(target, activeEndeavors, endeavorsById, unlockedNodes)
+        .filter((effect): effect is Extract<EntryEffect, { type: "DIALOGUE" }> => effect.type === "DIALOGUE")
+        .forEach(executeEntryEffect);
+    }
+  }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+}, [activeEndeavors]);
+```
+
+Two refinements beyond the original proposal, both load-bearing:
+- **Filtered to `DIALOGUE` only.** `computePoiEntryEffects` still returns `SOUND`/`START_ENDEAVOR` too (for the entry-moment call site, which wants everything). Replaying `entrySoundAsset` — or re-starting an endeavor a second time, which the `!activeEndeavors[id]` guard would already prevent, but there's no reason to even ask the question at this call site — on every phase change while the player stands still would be a real regression. This call site discards everything but `DIALOGUE`.
+- **Guarded on `activeDialogue === null`.** Without this, a phase advance triggered *from within an unrelated open conversation's own choice consequences* would yank the player into a different dialogue mid-sentence.
+
+No change to `EntryEffect`'s shape or `executeEntryEffect` is needed for this path beyond the `unlockedNodes` threading above — it's a new call site reusing both as-is.
+
+**Dependency correctness, confirmed not assumed:** `activeEndeavors` only receives a new object reference when `COMMAND_START_ENDEAVOR`/`COMMAND_ADVANCE_ENDEAVOR_PHASE` run (every other handler in `commands.ts` spreads state but leaves that reference untouched), so this effect won't spuriously re-run on unrelated dispatches.
+
+**Not fully solved, flagged not silently ignored:** if some *other* endeavor changes state while the player still satisfies an already-true `autoDialogueOnEnter` condition, this effect could re-fire the same dialogue. Same accepted looseness as re-selecting a POI already covers (`game-design-spec.md` Open Design Gap #7, no anti-grinding/cooldown) — not a new problem, not solved here.
+
+### Addendum integration points
+
+- `onSelectPoi` (`App.tsx`) — `computePoiEntryEffects` call gains the `unlockedNodes` argument and now runs all returned effect types, including `START_ENDEAVOR`. Trigger moment unchanged.
+- New `useEffect([activeEndeavors])` in `App()` — the phase-change path above.
+- `executeEntryEffect` — one new branch (`START_ENDEAVOR`).
+
+### Addendum reachability
+
+Still engine-only unless content is authored — no existing endeavor sets `autoStartOnEnter` (the shipped `endeavor_the_missing_broadsheet` starts via actor-click). Verified via unit tests only, matching the rest of this spec's precedent.
+
+### Addendum test plan
+
+- `entryEffects.test.ts`: `computePoiEntryEffects` fires `START_ENDEAVOR`+`DIALOGUE` for a not-yet-started, unlocked endeavor whose `autoStartOnEnter.poiId` matches; does not fire for an already-active endeavor (any phase, including the terminal one post-completion); does not fire when the endeavor resolves to locked via `isNodeUnlocked`.
+- The phase-change `useEffect` itself stays outside unit-test scope (no `App.test.tsx` exists, same precedent as the rest of `App.tsx`) — verified via the same manual/Playwright pass used for the original dialogue-visibility work.
+
+### Addendum open questions
+
+- **Hard dependency on `feature_node_unlock_rendering.md`'s `isNodeUnlocked` helper** — this addendum cannot ship its `isUnlocked` guard without it. Not a soft "related work" note; `autoStartOnEnter` firing for a locked endeavor would be a real bug, not a cosmetic gap.
+
 ## Status
 
-**Implemented.**
+**Implemented** (addendum and original scope both).
+
+Original scope: **Implemented.**
 - CHANGELOG: `[Unreleased]` — "`activeDialogue` moves dialogue visibility into `PlayerState`...", "`COMMAND_OPEN_DIALOGUE`/`COMMAND_CLOSE_DIALOGUE`...", "`EndeavorPhase.autoDialogueOnEnter`...", "entry-effects registry generalized...".
 - decisions.md: the partial reversal of the actor-selection-state decision, the portrait-resolution switch to a `dialogueId` reverse lookup, `DialogueOverlay` dropping `onClose` to follow `MinigameOverlay`'s precedent, and the `entryEffects.ts` extraction beyond the spec's original code sketch.
 
 All three confirmed decisions from review landed as specified: `COMMAND_CLOSE_DIALOGUE` mirrors `COMMAND_CANCEL_MINIGAME` exactly; District's entry-effects route through the same `EntryEffect[]` shape as POI's; `DialogueOverlay` drops `onClose` following `MinigameOverlay`'s precedent (with `node`/`speakerImageAsset` still passed in, since only `App.tsx` has resolved content to give it).
+
+Addendum: **Implemented**, alongside `feature_node_unlock_rendering.md` (its `isNodeUnlocked` guard landed in the same pass, per the stated dependency).
+- CHANGELOG: `[Unreleased]` — "`Endeavor.autoStartOnEnter`...", "phase-change entry-trigger...".
+- decisions.md: (see `feature_node_unlock_rendering.md`'s entry, which covers both specs' shared landing).

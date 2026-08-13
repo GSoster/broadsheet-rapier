@@ -4,7 +4,9 @@ import { fireEvent, render, screen } from "@testing-library/react";
 import { NodeInteractionCanvas } from "../../engine/components/NodeInteractionCanvas";
 
 describe("NodeInteractionCanvas", () => {
-  const actors = [{ id: "actor_mara_venn", name: "Mara Venn", title: "Wagering Ring Regular" }];
+  const actors = [
+    { id: "actor_mara_venn", name: "Mara Venn", title: "Wagering Ring Regular", isUnlocked: true },
+  ];
 
   it("renders the POI name/description and its actors", () => {
     render(
@@ -66,5 +68,44 @@ describe("NodeInteractionCanvas", () => {
     );
     fireEvent.click(screen.getByText(/Back/));
     expect(onLeave).toHaveBeenCalledTimes(1);
+  });
+
+  it("shows a locked actor as unlabeled and disabled rather than hiding them", () => {
+    const lockedActors = [
+      ...actors,
+      { id: "actor_anselm_draye", name: "Anselm Draye", title: "The Challenger", isUnlocked: false },
+    ];
+    render(
+      <NodeInteractionCanvas
+        poiName="The Crooked Hour"
+        poiDescription="desc"
+        actors={lockedActors}
+        selectedActorId={null}
+        onSelectActor={vi.fn()}
+        onLeave={vi.fn()}
+      />
+    );
+    const lockedButton = screen.getByText("??? (locked)");
+    expect(lockedButton).toBeDisabled();
+    expect(screen.queryByText("Anselm Draye")).not.toBeInTheDocument();
+  });
+
+  it("does not fire onSelectActor when a locked actor is clicked", () => {
+    const onSelectActor = vi.fn();
+    const lockedActors = [
+      { id: "actor_anselm_draye", name: "Anselm Draye", title: "The Challenger", isUnlocked: false },
+    ];
+    render(
+      <NodeInteractionCanvas
+        poiName="The Crooked Hour"
+        poiDescription="desc"
+        actors={lockedActors}
+        selectedActorId={null}
+        onSelectActor={onSelectActor}
+        onLeave={vi.fn()}
+      />
+    );
+    fireEvent.click(screen.getByText("??? (locked)"));
+    expect(onSelectActor).not.toHaveBeenCalled();
   });
 });

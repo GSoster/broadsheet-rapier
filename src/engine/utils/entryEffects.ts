@@ -1,4 +1,5 @@
 import type { PlayerState } from "../types";
+import { isNodeUnlocked } from "./isNodeUnlocked";
 
 // Generalizes the old one-off triggerPoiEntryEffects/triggerDistrictEntryEffects
 // functions into a typed registry, per game-design-spec.md Open Design Gap #9
@@ -8,7 +9,8 @@ import type { PlayerState } from "../types";
 // lives in App.tsx, since only it has dispatchCommand/dialogues in scope.
 export type EntryEffect =
   | { type: "SOUND"; asset: string }
-  | { type: "DIALOGUE"; dialogueId: string; nodeId?: string };
+  | { type: "DIALOGUE"; dialogueId: string; nodeId?: string }
+  | { type: "START_ENDEAVOR"; endeavorId: string; initialPhaseId: string };
 
 // Locally-owned minimal shapes, not the real Poi/Endeavor content types —
 // src/engine/ never imports src/content/ directly (web-implementation.md §3),
@@ -28,13 +30,18 @@ interface EntryEffectEndeavorPhase {
 }
 
 interface EntryEffectEndeavor {
+  id: string;
+  isUnlocked: boolean;
+  initialPhaseId: string;
   phases: Record<string, EntryEffectEndeavorPhase>;
+  autoStartOnEnter?: { poiId: string; dialogueId: string; nodeId?: string };
 }
 
 export function computePoiEntryEffects(
   poi: EntryEffectPoi,
   activeEndeavors: PlayerState["activeEndeavors"],
-  endeavorsById: Record<string, EntryEffectEndeavor>
+  endeavorsById: Record<string, EntryEffectEndeavor>,
+  unlockedNodes: PlayerState["unlockedNodes"]
 ): EntryEffect[] {
   const effects: EntryEffect[] = [];
   if (poi.entrySoundAsset) {
@@ -43,6 +50,18 @@ export function computePoiEntryEffects(
   for (const [endeavorId, progress] of Object.entries(activeEndeavors)) {
     const trigger = endeavorsById[endeavorId]?.phases[progress.currentPhaseId]?.autoDialogueOnEnter;
     if (trigger && trigger.poiId === poi.id) {
+      effects.push({ type: "DIALOGUE", dialogueId: trigger.dialogueId, nodeId: trigger.nodeId });
+    }
+  }
+  // Auto-starting: only for endeavors NOT yet in activeEndeavors — an
+  // endeavor already started (at any phase, including a completed/terminal
+  // one, which stays in activeEndeavors forever) is handled by the loop
+  // above instead, never both.
+  for (const endeavorData of Object.values(endeavorsById)) {
+    if (activeEndeavors[endeavorData.id]) continue;
+    const trigger = endeavorData.autoStartOnEnter;
+    if (trigger && trigger.poiId === poi.id && isNodeUnlocked(endeavorData, endeavorData.id, unlockedNodes)) {
+      effects.push({ type: "START_ENDEAVOR", endeavorId: endeavorData.id, initialPhaseId: endeavorData.initialPhaseId });
       effects.push({ type: "DIALOGUE", dialogueId: trigger.dialogueId, nodeId: trigger.nodeId });
     }
   }

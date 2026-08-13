@@ -31,6 +31,7 @@ import type { ItemDisplayData, RosterEntryData } from "./engine/components/Manag
 import { loadContent } from "./contentLoader";
 import { resolveDialogueEntryNodeId } from "./dialogueResolution";
 import { computeDistrictEntryEffects, computePoiEntryEffects, type EntryEffect } from "./engine/utils/entryEffects";
+import { isNodeUnlocked } from "./engine/utils/isNodeUnlocked";
 
 // Every content file is parsed through its schema here, once, at module
 // load — see contentLoader.ts for why. Nothing below this point ever reads
@@ -76,6 +77,7 @@ function App() {
   const currentLocation = usePlayerStore((state) => state.currentLocation);
   const currencies = usePlayerStore((state) => state.currencies);
   const activeEndeavors = usePlayerStore((state) => state.activeEndeavors);
+  const unlockedNodes = usePlayerStore((state) => state.unlockedNodes);
   const dialogueProgress = usePlayerStore((state) => state.dialogueProgress);
   const activeDialogue = usePlayerStore((state) => state.activeDialogue);
   const dispatchCommand = usePlayerStore((state) => state.dispatchCommand);
@@ -88,6 +90,13 @@ function App() {
   function executeEntryEffect(effect: EntryEffect) {
     if (effect.type === "SOUND") {
       playSound(effect.asset);
+      return;
+    }
+    if (effect.type === "START_ENDEAVOR") {
+      dispatchCommand({
+        type: "COMMAND_START_ENDEAVOR",
+        payload: { endeavorId: effect.endeavorId, initialPhaseId: effect.initialPhaseId },
+      });
       return;
     }
     const nodeId = effect.nodeId ?? resolveDialogueEntryNodeId(dialogues[effect.dialogueId], dialogueProgress[effect.dialogueId]);
@@ -107,6 +116,27 @@ function App() {
     // district changes.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Fires an EndeavorPhase's autoDialogueOnEnter for the POI the player is
+  // ALREADY standing in, when a phase change makes it newly applicable —
+  // the onSelectPoi call site only fires on the POI-selection moment
+  // itself, which misses this case (docs/features/
+  // feature_dialogue_visibility_and_auto_triggers.md addendum).
+  // Deliberately narrower than onSelectPoi's full effect list: SOUND/
+  // START_ENDEAVOR are excluded (replaying entry SFX or re-starting an
+  // endeavor on every unrelated phase change would be a regression), and
+  // it never fires over an already-open dialogue.
+  useEffect(() => {
+    if (currentLocation.poiId && activeDialogue === null) {
+      const target = pois.find((p) => p.id === currentLocation.poiId);
+      if (target) {
+        computePoiEntryEffects(target, activeEndeavors, endeavorsById, unlockedNodes)
+          .filter((effect): effect is Extract<EntryEffect, { type: "DIALOGUE" }> => effect.type === "DIALOGUE")
+          .forEach(executeEntryEffect);
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeEndeavors]);
 
   const currentPoi = pois.find((p) => p.id === currentLocation.poiId);
 
@@ -195,7 +225,7 @@ function App() {
           imageAsset={currentPoi.imageAsset}
           actors={actors
             .filter((a) => currentPoi.actorIds.includes(a.id))
-            .map((a) => ({ id: a.id, name: a.name, title: a.title }))}
+            .map((a) => ({ id: a.id, name: a.name, title: a.title, isUnlocked: isNodeUnlocked(a, a.id, unlockedNodes) }))}
           selectedActorId={selectedActorId}
           actions={buildPoiActions(currentPoi)}
           onSelectActor={handleSelectActor}
@@ -212,11 +242,17 @@ function App() {
         <WorldNavigationView
           settlementName={settlement.name}
           districtName={district.name}
-          pois={pois.map((p) => ({ id: p.id, name: p.name, isUnlocked: p.isUnlocked }))}
+          // BEHAVIOR FIX (not new scope): this previously read p.isUnlocked
+          // directly, the static content default only — PlayerState.unlockedNodes
+          // (written by COMMAND_UNLOCK_NODE / EndeavorPhase.unlocksNodesOnComplete)
+          // was never consulted, so a POI's lock state could never actually
+          // change at runtime. See game-design-spec.md Open Design Gap #13,
+          // docs/features/feature_node_unlock_rendering.md, docs/decisions.md.
+          pois={pois.map((p) => ({ id: p.id, name: p.name, isUnlocked: isNodeUnlocked(p, p.id, unlockedNodes) }))}
           onSelectPoi={(poiId) => {
             const target = pois.find((p) => p.id === poiId);
             if (target) {
-              computePoiEntryEffects(target, activeEndeavors, endeavorsById).forEach(executeEntryEffect);
+              computePoiEntryEffects(target, activeEndeavors, endeavorsById, unlockedNodes).forEach(executeEntryEffect);
             }
             dispatchCommand({
               // target.costShifts is guaranteed present (PoiSchema's

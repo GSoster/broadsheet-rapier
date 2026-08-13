@@ -146,6 +146,26 @@ describe("EndeavorSchema", () => {
     };
     expect(EndeavorSchema.safeParse(invalid).success).toBe(false);
   });
+
+  it("accepts an endeavor with autoStartOnEnter", () => {
+    const withTrigger = {
+      ...validEndeavor,
+      autoStartOnEnter: { poiId: "poi_crooked_hour_tavern", dialogueId: "dialogue_mara_venn" },
+    };
+    expect(EndeavorSchema.safeParse(withTrigger).success).toBe(true);
+  });
+
+  it("rejects an autoStartOnEnter with an unexpected extra key (.strict())", () => {
+    const invalid = {
+      ...validEndeavor,
+      autoStartOnEnter: {
+        poiId: "poi_crooked_hour_tavern",
+        dialogueId: "dialogue_mara_venn",
+        unexpectedKey: true,
+      },
+    };
+    expect(EndeavorSchema.safeParse(invalid).success).toBe(false);
+  });
 });
 
 describe("DialogueSchema", () => {

@@ -4,6 +4,7 @@ export interface NodeInteractionActor {
   id: string;
   name: string;
   title: string;
+  isUnlocked: boolean;
 }
 
 export interface NodeInteractionAction {
@@ -55,14 +56,21 @@ export function NodeInteractionCanvas({
           <button
             key={actor.id}
             type="button"
+            disabled={!actor.isUnlocked}
             onClick={() => onSelectActor(actor.id)}
-            className={`rounded border px-3 py-2 text-sm text-indigo-100 hover:border-indigo-500 ${
+            className={`rounded border px-3 py-2 text-sm text-indigo-100 disabled:cursor-not-allowed disabled:opacity-40 enabled:hover:border-indigo-500 ${
               selectedActorId === actor.id
                 ? "border-indigo-400 bg-neutral-800"
                 : "border-indigo-800 bg-neutral-900"
             }`}
           >
-            {actor.name} <span className="text-indigo-400">&middot; {actor.title}</span>
+            {actor.isUnlocked ? (
+              <>
+                {actor.name} <span className="text-indigo-400">&middot; {actor.title}</span>
+              </>
+            ) : (
+              "??? (locked)"
+            )}
           </button>
         ))}
       </div>

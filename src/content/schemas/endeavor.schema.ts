@@ -27,5 +27,19 @@ export const EndeavorSchema = z.object({
   isUnlocked: z.boolean(),
   initialPhaseId: z.string(),
   phases: z.record(z.string(), EndeavorPhaseSchema),
+  // Auto-starts this endeavor (COMMAND_START_ENDEAVOR with initialPhaseId,
+  // then opens dialogueId) when the player enters poiId, for an endeavor
+  // not yet in activeEndeavors — autoDialogueOnEnter above only fires for
+  // an endeavor already started. Gated on isNodeUnlocked (this endeavor's
+  // isUnlocked || unlockedNodes[id]) — see
+  // docs/features/feature_node_unlock_rendering.md, a hard dependency.
+  autoStartOnEnter: z
+    .object({
+      poiId: z.string(),
+      dialogueId: z.string(),
+      nodeId: z.string().optional(),
+    })
+    .strict()
+    .optional(),
 });
 export type Endeavor = z.infer<typeof EndeavorSchema>;

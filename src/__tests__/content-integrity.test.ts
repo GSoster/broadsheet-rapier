@@ -204,4 +204,16 @@ describe("content integrity: referential integrity", () => {
       }
     }
   });
+
+  // Same reasoning as the autoDialogueOnEnter check above — no real content
+  // sets autoStartOnEnter yet, so this is a single always-present test
+  // rather than one `it` per trigger.
+  it("every Endeavor.autoStartOnEnter reference resolves to real content", () => {
+    for (const endeavor of endeavors) {
+      const trigger = endeavor.autoStartOnEnter as { poiId: string; dialogueId: string } | undefined;
+      if (!trigger) continue;
+      expect(poiIdSet.has(trigger.poiId), `${endeavor.id}.autoStartOnEnter.poiId`).toBe(true);
+      expect(dialogueIdSet.has(trigger.dialogueId), `${endeavor.id}.autoStartOnEnter.dialogueId`).toBe(true);
+    }
+  });
 });
