@@ -4,6 +4,7 @@ import type { PlayerState, StateCommand } from "../types";
 import { PlayerStateSchema } from "../types";
 import { applyCommand } from "./commands";
 import { createEvent, type StateChangeEvent } from "./events";
+import { diffForNotifications, toNotificationEvent, type NotificationEvent, type RawNotificationEvent } from "./notifications";
 
 export const initialPlayerState: PlayerState = {
   // A small starting purse (50 bronze-equivalent) so the dice minigame is
@@ -27,7 +28,19 @@ export const initialPlayerState: PlayerState = {
 
 interface PlayerStore extends PlayerState {
   eventLog: StateChangeEvent[];
+  // Ephemeral, store-only, never persisted — same treatment as eventLog. A
+  // toast reload-resurrecting after a page refresh would be wrong (nothing
+  // "just happened" from the player's perspective), so this deliberately
+  // never touches PlayerState/PlayerStateSchema. See
+  // docs/features/feature_notification_system.md.
+  notifications: NotificationEvent[];
   dispatchCommand: (command: StateCommand) => void;
+  dismissNotification: (id: string) => void;
+  // For content-aware call sites outside commands.ts (App.tsx's
+  // Endeavor-completion detection, which needs endeavor content src/engine/
+  // may never read) that need to add a notification without going through
+  // a PlayerState-changing command.
+  pushNotification: (event: RawNotificationEvent) => void;
   exportSave: () => void;
   importSave: (file: File) => Promise<{ success: boolean; error?: string }>;
   /**
@@ -88,12 +101,27 @@ export const usePlayerStore = create<PlayerStore>()(
     (set, get) => ({
       ...initialPlayerState,
       eventLog: [],
+      notifications: [],
 
       dispatchCommand: (command) => {
         set((store) => {
-          const nextPlayerState = applyCommand(extractPlayerState(store), command);
-          return { ...nextPlayerState, eventLog: [...store.eventLog, createEvent(command)] };
+          const before = extractPlayerState(store);
+          const nextPlayerState = applyCommand(before, command);
+          const newNotifications = diffForNotifications(before, nextPlayerState).map(toNotificationEvent);
+          return {
+            ...nextPlayerState,
+            eventLog: [...store.eventLog, createEvent(command)],
+            notifications: [...store.notifications, ...newNotifications],
+          };
         });
+      },
+
+      dismissNotification: (id) => {
+        set((store) => ({ notifications: store.notifications.filter((n) => n.id !== id) }));
+      },
+
+      pushNotification: (event) => {
+        set((store) => ({ notifications: [...store.notifications, toNotificationEvent(event)] }));
       },
 
       exportSave: () => {
@@ -113,12 +141,12 @@ export const usePlayerStore = create<PlayerStore>()(
         if (!result.success) {
           return { success: false, error: result.error };
         }
-        set({ ...result.data, eventLog: [] });
+        set({ ...result.data, eventLog: [], notifications: [] });
         return { success: true };
       },
 
       resetProgress: () => {
-        set({ ...initialPlayerState, eventLog: [] });
+        set({ ...initialPlayerState, eventLog: [], notifications: [] });
       },
 
       devSetWorldClock: (patch) => {

@@ -81,6 +81,10 @@ Every visual/audio asset is categorized by the node type it belongs to (District
 
 Player progress must be persistable across sessions, and portable as an exportable/importable file so a player can move saves between devices. (Concrete implementation is in `web-implementation.md`.)
 
+## 12. Player Feedback
+
+Whenever the player's currency, inventory, or reputation with an Actor or Faction changes, or an Endeavor completes, they are shown a brief, transient on-screen acknowledgement — enough to notice at a glance, gone on its own after a few seconds, and dismissible early. This exists because none of those changes are otherwise guaranteed to be in the player's line of sight when they happen (a currency total sitting in a HUD corner, an inventory line inside a drawer the player hasn't opened). Not a persistent record — it carries no save-file weight and reflects nothing that survives a reload; it's purely a "something just happened" cue, not a log the player can review after the fact. (Concrete implementation is in `web-implementation.md`.)
+
 ---
 
 ## Open Design Gaps — Must Be Resolved Before Implementing Beyond the Technical Scaffold

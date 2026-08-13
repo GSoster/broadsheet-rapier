@@ -48,11 +48,31 @@ export interface ManagementDrawerProps {
   isOpen: boolean;
   onClose: () => void;
   endeavorTitles: Record<string, string>;
+  // endeavorId -> phaseId -> that phase's authored objectiveText, so the
+  // Endeavors tab can show prose ("Someone paid good silver to keep that
+  // press silent...") instead of the raw content id (`phase_confront_the_buyer`).
+  // Content-derived, same pattern as endeavorTitles/items/roster.
+  phaseObjectives: Record<string, Record<string, string>>;
+  // endeavorId -> phaseId -> whether that phase is terminal (no
+  // nextPhaseOnSuccess) — the same "reaching it is the representation of
+  // completion" rule the notification system's Endeavor-completion effect
+  // already uses (web-implementation.md §3/§10). Content-derived; lets the
+  // Endeavors tab split active from completed without importing content
+  // itself.
+  phaseIsTerminal: Record<string, Record<string, boolean>>;
   items: Record<string, ItemDisplayData>;
   roster: RosterEntryData[];
 }
 
-export function ManagementDrawer({ isOpen, onClose, endeavorTitles, items, roster }: ManagementDrawerProps) {
+export function ManagementDrawer({
+  isOpen,
+  onClose,
+  endeavorTitles,
+  phaseObjectives,
+  phaseIsTerminal,
+  items,
+  roster,
+}: ManagementDrawerProps) {
   const [tab, setTab] = useState<ManagementTab>("CASE_BOARD");
   const [isConfirmingReset, setConfirmingReset] = useState(false);
   const unlockedClues = usePlayerStore((state) => state.unlockedClues);
@@ -63,6 +83,14 @@ export function ManagementDrawer({ isOpen, onClose, endeavorTitles, items, roste
   const devSetWorldClock = usePlayerStore((state) => state.devSetWorldClock);
   const dialogueProgress = usePlayerStore((state) => state.dialogueProgress);
   const metRoster = roster.filter((entry) => dialogueProgress[entry.dialogueId] !== undefined);
+
+  const activeEndeavorEntries = Object.entries(activeEndeavors);
+  const completedEndeavors = activeEndeavorEntries.filter(
+    ([endeavorId, endeavor]) => phaseIsTerminal[endeavorId]?.[endeavor.currentPhaseId] === true
+  );
+  const ongoingEndeavors = activeEndeavorEntries.filter(
+    ([endeavorId, endeavor]) => phaseIsTerminal[endeavorId]?.[endeavor.currentPhaseId] !== true
+  );
 
   return (
     <AnimatePresence>
@@ -108,14 +136,37 @@ export function ManagementDrawer({ isOpen, onClose, endeavorTitles, items, roste
             ) : null}
             {tab === "ENDEAVORS" ? (
               Object.keys(activeEndeavors).length ? (
-                <ul className="flex flex-col gap-3">
-                  {Object.entries(activeEndeavors).map(([endeavorId, endeavor]) => (
-                    <li key={endeavorId}>
-                      <p className="font-medium">{endeavorTitles[endeavorId] ?? endeavorId}</p>
-                      <p className="text-indigo-400">Phase: {endeavor.currentPhaseId}</p>
-                    </li>
-                  ))}
-                </ul>
+                <div className="flex flex-col gap-4">
+                  {ongoingEndeavors.length ? (
+                    <ul className="flex flex-col gap-3">
+                      {ongoingEndeavors.map(([endeavorId, endeavor]) => (
+                        <li key={endeavorId}>
+                          <p className="font-medium">{endeavorTitles[endeavorId] ?? endeavorId}</p>
+                          <p className="text-indigo-400">
+                            {phaseObjectives[endeavorId]?.[endeavor.currentPhaseId] ?? endeavor.currentPhaseId}
+                          </p>
+                        </li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <p className="text-indigo-400">No active endeavors right now.</p>
+                  )}
+                  {completedEndeavors.length ? (
+                    <div className="border-t border-indigo-900 pt-3">
+                      <p className="mb-2 text-xs uppercase tracking-wide text-indigo-500">Completed</p>
+                      <ul className="flex flex-col gap-3 opacity-60">
+                        {completedEndeavors.map(([endeavorId, endeavor]) => (
+                          <li key={endeavorId}>
+                            <p className="font-medium">✓ {endeavorTitles[endeavorId] ?? endeavorId}</p>
+                            <p className="text-indigo-400">
+                              {phaseObjectives[endeavorId]?.[endeavor.currentPhaseId] ?? endeavor.currentPhaseId}
+                            </p>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  ) : null}
+                </div>
               ) : (
                 <p className="text-indigo-400">No active endeavors.</p>
               )

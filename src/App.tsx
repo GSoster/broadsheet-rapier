@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { usePlayerStore } from "./engine/store/playerStore";
 import { currenciesToBronzeEquivalent } from "./engine/store/commands";
 import { clampWager } from "./engine/minigames/dice";
@@ -9,6 +9,8 @@ import { NodeInteractionCanvas, type NodeInteractionAction } from "./engine/comp
 import { ManagementDrawer } from "./engine/components/ManagementDrawer";
 import { MinigameOverlay } from "./engine/components/MinigameOverlay";
 import { DialogueOverlay } from "./engine/components/DialogueOverlay";
+import { NotificationTray } from "./engine/components/NotificationTray";
+import { resolveNotificationMessage } from "./notificationResolution";
 
 import settlementRaw from "./content/settlements/settlement_valdeombra_city.json";
 import districtRaw from "./content/districts/district_lantern_ward.json";
@@ -124,6 +126,28 @@ const rosterEntries: RosterEntryData[] = actors.map((a) => ({
 
 const ENDEAVOR_ID = "endeavor_the_missing_broadsheet";
 
+// Content-derived lookup maps feeding notificationResolution.ts — small and
+// cheap enough to build unconditionally at module load, same tier as
+// factionsById/rosterEntries above.
+const itemNames = Object.fromEntries(itemList.map((item) => [item.id, item.name]));
+const actorNames = Object.fromEntries(actors.map((a) => [a.id, a.name]));
+const factionNames = Object.fromEntries(factions.map((f) => [f.id, f.name]));
+const endeavorTitles = Object.fromEntries(endeavors.map((e) => [e.id, e.title]));
+const phaseObjectives = Object.fromEntries(
+  endeavors.map((e) => [e.id, Object.fromEntries(Object.entries(e.phases).map(([phaseId, phase]) => [phaseId, phase.objectiveText]))])
+);
+// Same "no nextPhaseOnSuccess = terminal = reaching it is the
+// representation of completion" rule the notification system's
+// Endeavor-completion effect uses (web-implementation.md §3/§10) — reused
+// here, not reinvented, so the Endeavors tab's active/completed split
+// agrees with what already triggers a "Completed: ..." toast.
+const phaseIsTerminal = Object.fromEntries(
+  endeavors.map((e) => [
+    e.id,
+    Object.fromEntries(Object.entries(e.phases).map(([phaseId, phase]) => [phaseId, phase.nextPhaseOnSuccess === undefined])),
+  ])
+);
+
 function App() {
   const currentLocation = usePlayerStore((state) => state.currentLocation);
   const currencies = usePlayerStore((state) => state.currencies);
@@ -132,8 +156,18 @@ function App() {
   const dialogueProgress = usePlayerStore((state) => state.dialogueProgress);
   const activeDialogue = usePlayerStore((state) => state.activeDialogue);
   const dispatchCommand = usePlayerStore((state) => state.dispatchCommand);
+  const notifications = usePlayerStore((state) => state.notifications);
+  const dismissNotification = usePlayerStore((state) => state.dismissNotification);
+  const pushNotification = usePlayerStore((state) => state.pushNotification);
   const [isDrawerOpen, setDrawerOpen] = useState(false);
   const [selectedActorId, setSelectedActorId] = useState<string | null>(null);
+  // Purely cosmetic click-acknowledgement for "Pay off the buyer" — the
+  // action itself is deliberately repeatable with no one-time gate
+  // (web-implementation.md §3), so this doesn't disable the action
+  // permanently, only long enough for a click to visibly register instead
+  // of looking unresponsive (the currency toast is the only other feedback,
+  // and it's easy to miss if you're not looking at the corner).
+  const [buyerJustPaid, setBuyerJustPaid] = useState(false);
 
   // Turns a computed EntryEffect into the actual side effect. Lives inside
   // App() (not a top-level function) since DIALOGUE effects need
@@ -186,6 +220,30 @@ function App() {
           .forEach(executeEntryEffect);
       }
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeEndeavors]);
+
+  // Fires an "Endeavor completed" notification the moment an Endeavor's
+  // phase transitions INTO a terminal one (no nextPhaseOnSuccess) — separate
+  // from the dialogue-trigger effect above since this needs to compare
+  // against the PREVIOUS phase, not just react to the current one.
+  // prevActiveEndeavorsRef is seeded with activeEndeavors itself (not {}/
+  // undefined) so the first comparison after mount is always against
+  // itself — otherwise a save reloaded with an already-completed Endeavor
+  // would fire a false "completed" toast on every page load, since this
+  // effect still runs once after the first render regardless of its
+  // dependency array. See docs/features/feature_notification_system.md.
+  const prevActiveEndeavorsRef = useRef(activeEndeavors);
+  useEffect(() => {
+    for (const [endeavorId, progress] of Object.entries(activeEndeavors)) {
+      const previousPhaseId = prevActiveEndeavorsRef.current[endeavorId]?.currentPhaseId;
+      if (previousPhaseId === progress.currentPhaseId) continue;
+      const phase = endeavorsById[endeavorId]?.phases[progress.currentPhaseId];
+      if (phase && phase.nextPhaseOnSuccess === undefined) {
+        pushNotification({ tone: "info", kind: "ENDEAVOR_COMPLETE", endeavorId });
+      }
+    }
+    prevActiveEndeavorsRef.current = activeEndeavors;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeEndeavors]);
 
@@ -251,13 +309,15 @@ function App() {
         const canAfford = currenciesToBronzeEquivalent(currencies) >= 20;
         actions.push({
           id: "action_pay_off_buyer",
-          label: canAfford ? "Pay off the buyer (1 silver)" : "Pay off the buyer (need 1 silver)",
-          disabled: !canAfford,
+          label: buyerJustPaid ? "Paid ✓" : canAfford ? "Pay off the buyer (1 silver)" : "Pay off the buyer (need 1 silver)",
+          disabled: buyerJustPaid || !canAfford,
           onClick: () => {
             dispatchCommand({
               type: "COMMAND_ADJUST_CURRENCY",
               payload: { denomination: "silver", amount: -1 },
             });
+            setBuyerJustPaid(true);
+            window.setTimeout(() => setBuyerJustPaid(false), 1200);
           },
         });
       }
@@ -329,7 +389,9 @@ function App() {
       <ManagementDrawer
         isOpen={isDrawerOpen}
         onClose={() => setDrawerOpen(false)}
-        endeavorTitles={Object.fromEntries(endeavors.map((e) => [e.id, e.title]))}
+        endeavorTitles={endeavorTitles}
+        phaseObjectives={phaseObjectives}
+        phaseIsTerminal={phaseIsTerminal}
         items={itemsById}
         roster={rosterEntries}
       />
@@ -338,6 +400,12 @@ function App() {
         dialogueId={activeDialogue?.dialogueId ?? ""}
         node={openNode}
         speakerImageAsset={speakerActor?.imageAsset}
+      />
+      <NotificationTray
+        notifications={notifications.map((event) =>
+          resolveNotificationMessage(event, { itemNames, actorNames, factionNames, endeavorTitles })
+        )}
+        onDismiss={dismissNotification}
       />
     </div>
   );

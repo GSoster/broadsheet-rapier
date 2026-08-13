@@ -159,16 +159,17 @@ Schemas live in `src/content/schemas/`. All content JSON under `src/content/` mu
 src/
   engine/
     types/index.ts
-    store/{playerStore.ts, commands.ts, events.ts}
+    store/{playerStore.ts, commands.ts, events.ts, notifications.ts}
     minigames/{dice.ts, duel.ts, index.ts}
     audio/{playSound.ts}
     utils/{evaluator.ts, resolveAssetUrl.ts, entryEffects.ts}
-    components/{WorldClockHud.tsx, WorldNavigationView.tsx, NodeInteractionCanvas.tsx, ManagementDrawer.tsx, AssetFallback.tsx, MinigameOverlay.tsx, DialogueOverlay.tsx, minigames/{DiceGame.tsx, DuelGame.tsx}}
+    components/{WorldClockHud.tsx, WorldNavigationView.tsx, NodeInteractionCanvas.tsx, ManagementDrawer.tsx, AssetFallback.tsx, MinigameOverlay.tsx, DialogueOverlay.tsx, NotificationTray.tsx, Tooltip.tsx, minigames/{DiceGame.tsx, DuelGame.tsx}}
   content/
     schemas/{shared.ts, settlement.schema.ts, district.schema.ts, poi.schema.ts, actor.schema.ts, faction.schema.ts, endeavor.schema.ts, dialogue.schema.ts, item.schema.ts}
     settlements/ districts/ pois/ actors/ factions/ endeavors/ dialogues/ items/
   dialogueResolution.ts
-  __tests__/{schemas.test.ts, content-integrity.test.ts, playerStore.test.ts, persistence.test.ts, commands.test.ts, minigames.test.ts, dice.test.ts, duel.test.ts, playSound.test.ts, resolveAssetUrl.test.ts, entryEffects.test.ts, evaluator.test.ts, resolveDialogueEntryNodeId.test.ts, components/, setup/}
+  notificationResolution.ts
+  __tests__/{schemas.test.ts, content-integrity.test.ts, playerStore.test.ts, persistence.test.ts, commands.test.ts, minigames.test.ts, dice.test.ts, duel.test.ts, notifications.test.ts, notificationResolution.test.ts, playSound.test.ts, resolveAssetUrl.test.ts, entryEffects.test.ts, evaluator.test.ts, resolveDialogueEntryNodeId.test.ts, components/, setup/}
 public/
   content/assets/{images/districts, images/pois, images/actors, images/items, audio}/
 ```
@@ -225,3 +226,16 @@ public/
 - `DuelConfig` (the opponent's launch parameters — `opponentId`, `opponentName`, `opponentStartingEnergy`, `opponentStartingPoise`, optional `startingDistance`) is authored per encounter; the player's own starting `energy`/`poise` are a fixed 100/100 owned by `DuelGame.tsx` itself, not `PlayerState`-derived or per-encounter-configurable this phase.
 - UI: `src/engine/components/minigames/DuelGame.tsx`, mirroring `DiceGame.tsx`'s pattern — session-local phase state (`choosing` → `resolving` → looping until `outcome !== "ONGOING"` → `result`), injectable `random`/`playSound` props, a turn log, action buttons disabled per current distance-legality, "Collect" dispatching `COMMAND_RESOLVE_MINIGAME`, "Leave" dispatching `COMMAND_CANCEL_MINIGAME` at any point before result.
 - **No in-content trigger exists yet** — nothing in `App.tsx` or any content JSON dispatches `COMMAND_START_MINIGAME` with `type: "DUEL"` this phase. Engine-only; see `docs/features/feature_rapier_duel.md`'s Reachability section.
+
+## 10. Notification System
+
+Implements `game-design-spec.md` §12. See `docs/features/feature_notification_system.md` for full design rationale — summarized here as the concrete shape:
+
+- **`NotificationEvent`** (`src/engine/store/notifications.ts`) is a discriminated union on `kind`: `CURRENCY` (`deltaBronze: number`), `ITEM` (`itemId`, signed `quantity`), `REPUTATION` (`targetType: "actor"|"faction"`, `targetId`, signed `amount`), `ENDEAVOR_COMPLETE` (`endeavorId`). Every variant carries `id`, `timestamp`, and a `tone: "gain"|"loss"|"info"`.
+- **Store-only, like `eventLog` — never part of `PlayerState`/`PlayerStateSchema`, never persisted.** `PlayerStore.notifications: NotificationEvent[]`; `resetProgress`/`importSave` clear it the same way they already clear `eventLog`.
+- **`CURRENCY`/`ITEM`/`REPUTATION` are derived by diffing `PlayerState` before vs. after every `dispatchCommand` call** (`diffForNotifications(before, after)`, a pure function), not by switching on the dispatched command's `type`. This is required, not stylistic: `COMMAND_SELECT_DIALOGUE_CHOICE` and `COMMAND_RESOLVE_MINIGAME`'s handlers apply their nested `commands`/`onSuccessCommands`/`onFailureCommands` via direct recursive `applyCommand` calls inside `commands.ts`, never a second `dispatchCommand` call — so only the final, fully-resolved state reflects them. A type-switch approach at the `dispatchCommand` boundary would silently miss most real content-driven currency/item/reputation changes.
+- **`ENDEAVOR_COMPLETE` cannot be derived the same way** — "terminal phase" (no `nextPhaseOnSuccess`) is a content fact `src/engine/` may never read. Detected instead in `App.tsx`, via a `useEffect` reacting to `activeEndeavors` (sibling to the existing phase-change dialogue-trigger effect), comparing each Endeavor's `currentPhaseId` against its value on the *previous* run (a `useRef` **seeded with `activeEndeavors` itself**, not `{}`/`undefined` — seeding it empty would fire a false "completed" toast on every page load for a save that already has a completed Endeavor, since the effect still runs once after the first render regardless of its dependency array). On a genuine transition into a terminal phase, it calls `pushNotification`.
+- **`PlayerStore` gains `dismissNotification(id)` and `pushNotification(event)`** — the latter exists specifically for the Endeavor-completion case above (a content-aware call site outside `commands.ts` that needs to add a notification without it being the side effect of a `PlayerState`-changing command).
+- **No new `CommandType`, no `StateCommandSchema` change.** Notifications are never something content authors dispatch — they're derived from state changes that already happen for other reasons, so the content-facing command vocabulary is untouched.
+- **Rendering**: `src/engine/components/NotificationTray.tsx`, mounted unconditionally in `App.tsx` (same always-mounted, prop/self-gated pattern as `MinigameOverlay`/`DialogueOverlay`). Takes a locally-owned `NotificationDisplayItem[]` (`{id, tone, message}`) — never the raw content-referencing `NotificationEvent` — per the `src/engine/` content boundary (§3). `src/notificationResolution.ts` (sibling to `dialogueResolution.ts`, same reasoning: needs `src/content/`-derived names, so lives outside `src/engine/`) resolves each raw event into a display string using `App.tsx`'s already-loaded item/actor/faction/endeavor name lookups; an unresolvable id falls back to itself rather than throwing.
+- Fixed top-right, `z-[100]` — deliberately above the `z-50` tier (`DialogueOverlay`/`MinigameOverlay`/`ManagementDrawer`), so a notification is visible regardless of what else is open, not competing for space with the Journal button. Stacks vertically via `AnimatePresence` (same enter/exit pattern as `ManagementDrawer`, the only prior precedent for it), newest appended last. Each toast auto-dismisses after a fixed `AUTO_DISMISS_MS` (4.5s, a plain tunable constant) via a per-toast `useEffect`-owned timer (`key={id}` gives each toast its own independent timer, unaffected by siblings being added/removed), or immediately on clicking its "×".

@@ -6,7 +6,7 @@ const STORAGE_KEY = "broadsheet_rapier_player_state";
 
 beforeEach(() => {
   localStorage.clear();
-  usePlayerStore.setState({ ...initialPlayerState, eventLog: [] });
+  usePlayerStore.setState({ ...initialPlayerState, eventLog: [], notifications: [] });
 });
 
 describe("localStorage persistence", () => {
@@ -29,6 +29,7 @@ describe("localStorage persistence", () => {
     const persisted = JSON.parse(raw!);
 
     expect(persisted.state).not.toHaveProperty("eventLog");
+    expect(persisted.state).not.toHaveProperty("notifications");
     expect(persisted.state).not.toHaveProperty("dispatchCommand");
     expect(persisted.state).not.toHaveProperty("exportSave");
     expect(persisted.state).not.toHaveProperty("importSave");

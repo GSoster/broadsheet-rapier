@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it } from "vitest";
 import { initialPlayerState, parseAndValidateSave, usePlayerStore } from "../engine/store/playerStore";
 
 beforeEach(() => {
-  usePlayerStore.setState({ ...initialPlayerState, eventLog: [] });
+  usePlayerStore.setState({ ...initialPlayerState, eventLog: [], notifications: [] });
 });
 
 describe("initial state", () => {
@@ -66,6 +66,95 @@ describe("dispatchCommand", () => {
       usePlayerStore.getState().dispatchCommand({ type: "COMMAND_NEXT_DAY", payload: {} })
     ).toThrow();
     expect(usePlayerStore.getState().worldClock).toEqual({ shift: "MORNING", day: 1, season: "SPRING", weather: "CLEAR" });
+  });
+});
+
+describe("dispatchCommand — notifications", () => {
+  it("pushes a CURRENCY notification for a direct COMMAND_ADJUST_CURRENCY dispatch", () => {
+    usePlayerStore.getState().dispatchCommand({
+      type: "COMMAND_ADJUST_CURRENCY",
+      payload: { denomination: "silver", amount: 3 },
+    });
+    const notifications = usePlayerStore.getState().notifications;
+    expect(notifications).toHaveLength(1);
+    expect(notifications[0]).toMatchObject({ kind: "CURRENCY", tone: "gain", deltaBronze: 60 });
+  });
+
+  it("pushes no notification when a command doesn't touch currency/item/reputation", () => {
+    usePlayerStore.getState().dispatchCommand({
+      type: "COMMAND_UNLOCK_NODE",
+      payload: { nodeId: "district_lantern_ward" },
+    });
+    expect(usePlayerStore.getState().notifications).toEqual([]);
+  });
+
+  // The important case: currency/item changes buried inside a
+  // COMMAND_SELECT_DIALOGUE_CHOICE's nested `commands` never go through
+  // dispatchCommand individually (commands.ts applies them via a direct
+  // recursive applyCommand call, not a second dispatchCommand call) — only
+  // the final resulting PlayerState reflects them. A notification design
+  // that switched on the dispatched command's own `type` would miss this
+  // entirely; the before/after diff must not.
+  it("pushes notifications for currency/item changes nested inside a dialogue choice's commands", () => {
+    usePlayerStore.getState().dispatchCommand({
+      type: "COMMAND_SELECT_DIALOGUE_CHOICE",
+      payload: {
+        dialogueId: "dialogue_placeholder",
+        nextNodeId: null,
+        commands: [
+          { type: "COMMAND_ADJUST_CURRENCY", payload: { denomination: "silver", amount: 24 } },
+          { type: "COMMAND_ADD_ITEM", payload: { itemId: "item_vantry_rapier", quantity: 1 } },
+        ],
+      },
+    });
+    const notifications = usePlayerStore.getState().notifications;
+    expect(notifications).toHaveLength(2);
+    expect(notifications).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ kind: "CURRENCY", tone: "gain", deltaBronze: 480 }),
+        expect.objectContaining({ kind: "ITEM", tone: "gain", itemId: "item_vantry_rapier", quantity: 1 }),
+      ])
+    );
+  });
+
+  it("pushes a REPUTATION notification for COMMAND_ADJUST_REPUTATION", () => {
+    usePlayerStore.getState().dispatchCommand({
+      type: "COMMAND_ADJUST_REPUTATION",
+      payload: { targetType: "actor", targetId: "actor_mara_venn", amount: 5 },
+    });
+    const notifications = usePlayerStore.getState().notifications;
+    expect(notifications).toHaveLength(1);
+    expect(notifications[0]).toMatchObject({
+      kind: "REPUTATION",
+      tone: "gain",
+      targetType: "actor",
+      targetId: "actor_mara_venn",
+      amount: 5,
+    });
+  });
+});
+
+describe("dismissNotification / pushNotification", () => {
+  it("removes only the matching notification by id", () => {
+    usePlayerStore.getState().pushNotification({ tone: "info", kind: "ENDEAVOR_COMPLETE", endeavorId: "endeavor_a" });
+    usePlayerStore.getState().pushNotification({ tone: "info", kind: "ENDEAVOR_COMPLETE", endeavorId: "endeavor_b" });
+    const [first, second] = usePlayerStore.getState().notifications;
+    usePlayerStore.getState().dismissNotification(first.id);
+    const remaining = usePlayerStore.getState().notifications;
+    expect(remaining).toHaveLength(1);
+    expect(remaining[0].id).toBe(second.id);
+  });
+});
+
+describe("resetProgress / importSave clear notifications", () => {
+  it("resetProgress clears notifications alongside eventLog", () => {
+    usePlayerStore.getState().dispatchCommand({
+      type: "COMMAND_ADJUST_CURRENCY",
+      payload: { denomination: "silver", amount: 3 },
+    });
+    expect(usePlayerStore.getState().notifications).toHaveLength(1);
+    usePlayerStore.getState().resetProgress();
+    expect(usePlayerStore.getState().notifications).toEqual([]);
   });
 });
 

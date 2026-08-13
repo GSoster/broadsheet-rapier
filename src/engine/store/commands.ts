@@ -37,7 +37,7 @@ export function currenciesToBronzeEquivalent(currencies: PlayerState["currencies
   return currencies.gold * 400 + currencies.silver * 20 + currencies.bronze;
 }
 
-function bronzeEquivalentToCurrencies(totalBronze: number): PlayerState["currencies"] {
+export function bronzeEquivalentToCurrencies(totalBronze: number): PlayerState["currencies"] {
   // Hard floor: total value can never go negative — this is the store-level
   // guarantee, not just a UI-layer convention (a negative total clamps to 0).
   const clamped = Math.max(0, totalBronze);
