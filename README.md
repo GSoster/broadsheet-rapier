@@ -33,6 +33,7 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for commit conventions, branching, and th
 
 - [docs/game-design-spec.md](docs/game-design-spec.md) — what the game *is*, engine-agnostic
 - [docs/web-implementation.md](docs/web-implementation.md) — how it's built in this stack (React/TS/Zustand/Zod)
+- [docs/engine.md](docs/engine.md) — how the engine's major pieces interact (CQRS dispatch, EntryEffects, Dialogue, Minigames, the engine/content boundary), with diagrams
 - [docs/world-lore.md](docs/world-lore.md) — setting, era constraints, tone
 - [docs/narrative-inspirations.md](docs/narrative-inspirations.md) — narrative/UI inspiration priority hierarchy
 - [docs/execution-plan.md](docs/execution-plan.md) — phased build plan and current status

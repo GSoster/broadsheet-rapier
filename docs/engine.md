@@ -133,12 +133,8 @@ re-starting an Endeavor on every unrelated phase change would be a
 regression, and it's guarded to never fire over an already-open dialogue.
 
 `START_ENDEAVOR` is a third, real variant (`entryEffects.ts:10-13`, driven by
-`Endeavor.autoStartOnEnter`) — `docs/game-design-spec.md` §10 previously
-described `EntryEffect` as `SOUND | DIALOGUE` only and has been corrected to
-list all three. (The originating spec,
-`docs/features/feature_dialogue_visibility_and_auto_triggers.md`, already
-documented `START_ENDEAVOR` correctly, in its addendum section — only the
-top-level design-gap summary in `game-design-spec.md` had gone stale.)
+`Endeavor.autoStartOnEnter`) — see `docs/features/feature_dialogue_visibility_and_auto_triggers.md`'s
+addendum section for its full design rationale.
 
 ---
 
@@ -342,25 +338,3 @@ part of a `COMMAND_MOVE_TO_POI` payload; an Endeavor phase's
 `unlocksNodesOnComplete` becomes part of a `COMMAND_ADVANCE_ENDEAVOR_PHASE`
 payload. `src/engine/` never looks these up itself, by construction — it has
 no way to.
-
----
-
-## Corrections Made While Writing This Document
-
-Two real discrepancies between the code and the existing docs surfaced while
-grounding the diagrams above in the actual source. Both have been corrected
-in place, at the source, not just noted here:
-
-1. **`EntryEffect`'s `START_ENDEAVOR` variant** (`src/engine/utils/entryEffects.ts:10-13`,
-   driven by `Endeavor.autoStartOnEnter`) was undocumented in
-   `docs/game-design-spec.md` §10 (Open Design Gap #9's summary described
-   `EntryEffect` as `SOUND | DIALOGUE` only) — corrected there to list all
-   three variants. `docs/web-implementation.md`'s content-driven audio
-   section and `docs/features/feature_dialogue_visibility_and_auto_triggers.md`
-   were re-checked and found accurate as written (the latter documents
-   `START_ENDEAVOR` correctly in its addendum section).
-2. **`docs/web-implementation.md` §3's "Command handlers... mutate state"**
-   language was imprecise — every handler is confirmed immutable
-   (spread-based construction of a new object), never literal mutation.
-   Corrected there to "are pure functions that return a new `PlayerState`
-   (immutable, spread-based — never literal mutation)."
