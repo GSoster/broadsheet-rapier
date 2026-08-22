@@ -202,7 +202,7 @@ function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Fires an EndeavorPhase's autoDialogueOnEnter for the POI the player is
+  // Fires an EndeavorPhase's onPoiEnter for the POI the player is
   // ALREADY standing in, when a phase change makes it newly applicable —
   // the onSelectPoi call site only fires on the POI-selection moment
   // itself, which misses this case (docs/features/
@@ -254,7 +254,7 @@ function App() {
     ? openDialogue.nodes[resolveDialogueEntryNodeId(openDialogue, dialogueProgress[openDialogue.id])]
     : null;
   // Matched by display name, not Actor.dialogueId — a scene an Actor
-  // *appears* in (autoStartOnEnter/autoDialogueOnEnter, or a minigame's
+  // *appears* in (an Endeavor's/EndeavorPhase's onPoiEnter, or a minigame's
   // onSuccessCommands/onFailureCommands opening a reckoning dialogue) is
   // very often not that Actor's own home dialogue (see
   // docs/features/content_a_debt_in_steel.md's dialogueId-split design and

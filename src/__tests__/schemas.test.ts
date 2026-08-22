@@ -39,15 +39,18 @@ describe("DistrictSchema", () => {
     expect(DistrictSchema.safeParse(invalid).success).toBe(false);
   });
 
-  it("accepts a district without entrySoundAsset", () => {
-    const withoutSound: Record<string, unknown> = { ...validDistrict };
-    delete withoutSound.entrySoundAsset;
-    expect(DistrictSchema.safeParse(withoutSound).success).toBe(true);
+  it("accepts a district without onEnter", () => {
+    const withoutOnEnter: Record<string, unknown> = { ...validDistrict };
+    delete withoutOnEnter.onEnter;
+    expect(DistrictSchema.safeParse(withoutOnEnter).success).toBe(true);
   });
 
-  it("accepts a district with entrySoundAsset", () => {
-    const withSound = { ...validDistrict, entrySoundAsset: "/content/assets/audio/lantern_ward_entry.mp3" };
-    expect(DistrictSchema.safeParse(withSound).success).toBe(true);
+  it("accepts a district with onEnter", () => {
+    const withOnEnter = {
+      ...validDistrict,
+      onEnter: [{ type: "SOUND", asset: "/content/assets/audio/lantern_ward_entry.mp3" }],
+    };
+    expect(DistrictSchema.safeParse(withOnEnter).success).toBe(true);
   });
 });
 
@@ -61,15 +64,18 @@ describe("PoiSchema", () => {
     expect(PoiSchema.safeParse(invalid).success).toBe(false);
   });
 
-  it("accepts a poi without entrySoundAsset", () => {
-    const withoutSound: Record<string, unknown> = { ...validPoi };
-    delete withoutSound.entrySoundAsset;
-    expect(PoiSchema.safeParse(withoutSound).success).toBe(true);
+  it("accepts a poi without onEnter", () => {
+    const withoutOnEnter: Record<string, unknown> = { ...validPoi };
+    delete withoutOnEnter.onEnter;
+    expect(PoiSchema.safeParse(withoutOnEnter).success).toBe(true);
   });
 
-  it("accepts a poi with entrySoundAsset", () => {
-    const withSound = { ...validPoi, entrySoundAsset: "/content/assets/audio/crooked_hour_tavern_entry.mp3" };
-    expect(PoiSchema.safeParse(withSound).success).toBe(true);
+  it("accepts a poi with onEnter", () => {
+    const withOnEnter = {
+      ...validPoi,
+      onEnter: [{ type: "SOUND", asset: "/content/assets/audio/crooked_hour_tavern_entry.mp3" }],
+    };
+    expect(PoiSchema.safeParse(withOnEnter).success).toBe(true);
   });
 });
 
@@ -115,30 +121,33 @@ describe("EndeavorSchema", () => {
     expect(EndeavorSchema.safeParse(invalid).success).toBe(false);
   });
 
-  it("accepts a phase with autoDialogueOnEnter", () => {
+  it("accepts a phase with onPoiEnter", () => {
     const withTrigger = {
       ...validEndeavor,
       phases: {
         ...validEndeavor.phases,
         phase_ask_around: {
           ...validEndeavor.phases.phase_ask_around,
-          autoDialogueOnEnter: { poiId: "poi_crooked_hour_tavern", dialogueId: "dialogue_mara_venn" },
+          onPoiEnter: {
+            poiId: "poi_crooked_hour_tavern",
+            onEnter: [{ type: "DIALOGUE", dialogueId: "dialogue_mara_venn" }],
+          },
         },
       },
     };
     expect(EndeavorSchema.safeParse(withTrigger).success).toBe(true);
   });
 
-  it("rejects an autoDialogueOnEnter with an unexpected extra key (.strict())", () => {
+  it("rejects an onPoiEnter with an unexpected extra key (.strict())", () => {
     const invalid = {
       ...validEndeavor,
       phases: {
         ...validEndeavor.phases,
         phase_ask_around: {
           ...validEndeavor.phases.phase_ask_around,
-          autoDialogueOnEnter: {
+          onPoiEnter: {
             poiId: "poi_crooked_hour_tavern",
-            dialogueId: "dialogue_mara_venn",
+            onEnter: [{ type: "DIALOGUE", dialogueId: "dialogue_mara_venn" }],
             unexpectedKey: true,
           },
         },
@@ -147,20 +156,23 @@ describe("EndeavorSchema", () => {
     expect(EndeavorSchema.safeParse(invalid).success).toBe(false);
   });
 
-  it("accepts an endeavor with autoStartOnEnter", () => {
+  it("accepts an endeavor with onPoiEnter", () => {
     const withTrigger = {
       ...validEndeavor,
-      autoStartOnEnter: { poiId: "poi_crooked_hour_tavern", dialogueId: "dialogue_mara_venn" },
+      onPoiEnter: {
+        poiId: "poi_crooked_hour_tavern",
+        onEnter: [{ type: "DIALOGUE", dialogueId: "dialogue_mara_venn" }],
+      },
     };
     expect(EndeavorSchema.safeParse(withTrigger).success).toBe(true);
   });
 
-  it("rejects an autoStartOnEnter with an unexpected extra key (.strict())", () => {
+  it("rejects an endeavor-level onPoiEnter with an unexpected extra key (.strict())", () => {
     const invalid = {
       ...validEndeavor,
-      autoStartOnEnter: {
+      onPoiEnter: {
         poiId: "poi_crooked_hour_tavern",
-        dialogueId: "dialogue_mara_venn",
+        onEnter: [{ type: "DIALOGUE", dialogueId: "dialogue_mara_venn" }],
         unexpectedKey: true,
       },
     };

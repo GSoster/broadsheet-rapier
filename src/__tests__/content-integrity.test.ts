@@ -180,40 +180,47 @@ describe("content integrity: referential integrity", () => {
     }
   });
 
-  // A single test, not one `it` per trigger like the blocks above — no real
-  // content sets autoDialogueOnEnter yet (feature_dialogue_visibility_and_auto_triggers.md's
-  // Reachability note: engine-only, no content instance authored), and an
-  // empty describe/it set from a zero-iteration loop is a Vitest error, not
-  // a vacuous pass. Still catches a broken reference the moment one exists.
-  it("every EndeavorPhase.autoDialogueOnEnter reference resolves to real content", () => {
+  // A single test, not one `it` per trigger like the blocks above — real
+  // content does set EndeavorPhase.onPoiEnter (endeavor_a_debt_in_steel.json,
+  // see docs/features/feature_triggerable_effects.md), but the count varies
+  // by content and an empty describe/it set from a zero-iteration loop is a
+  // Vitest error, not a vacuous pass — so this stays a single always-present
+  // test that iterates however many triggers actually exist.
+  it("every EndeavorPhase.onPoiEnter reference resolves to real content", () => {
     for (const endeavor of endeavors) {
       const phases = endeavor.phases as Record<
         string,
-        { autoDialogueOnEnter?: { poiId: string; dialogueId: string } }
+        { onPoiEnter?: { poiId: string; onEnter: Array<{ type: string; dialogueId?: string }> } }
       >;
       for (const [phaseId, phase] of Object.entries(phases)) {
-        const trigger = phase.autoDialogueOnEnter;
+        const trigger = phase.onPoiEnter;
         if (!trigger) continue;
-        expect(poiIdSet.has(trigger.poiId), `${endeavor.id}.phases["${phaseId}"].autoDialogueOnEnter.poiId`).toBe(
-          true
-        );
-        expect(
-          dialogueIdSet.has(trigger.dialogueId),
-          `${endeavor.id}.phases["${phaseId}"].autoDialogueOnEnter.dialogueId`
-        ).toBe(true);
+        expect(poiIdSet.has(trigger.poiId), `${endeavor.id}.phases["${phaseId}"].onPoiEnter.poiId`).toBe(true);
+        for (const [i, effect] of trigger.onEnter.entries()) {
+          if (effect.type !== "DIALOGUE") continue;
+          expect(
+            dialogueIdSet.has(effect.dialogueId as string),
+            `${endeavor.id}.phases["${phaseId}"].onPoiEnter.onEnter[${i}].dialogueId`
+          ).toBe(true);
+        }
       }
     }
   });
 
-  // Same reasoning as the autoDialogueOnEnter check above — no real content
-  // sets autoStartOnEnter yet, so this is a single always-present test
-  // rather than one `it` per trigger.
-  it("every Endeavor.autoStartOnEnter reference resolves to real content", () => {
+  // Same reasoning as the onPoiEnter check above.
+  it("every Endeavor.onPoiEnter reference resolves to real content", () => {
     for (const endeavor of endeavors) {
-      const trigger = endeavor.autoStartOnEnter as { poiId: string; dialogueId: string } | undefined;
+      const trigger = endeavor.onPoiEnter as
+        | { poiId: string; onEnter: Array<{ type: string; dialogueId?: string }> }
+        | undefined;
       if (!trigger) continue;
-      expect(poiIdSet.has(trigger.poiId), `${endeavor.id}.autoStartOnEnter.poiId`).toBe(true);
-      expect(dialogueIdSet.has(trigger.dialogueId), `${endeavor.id}.autoStartOnEnter.dialogueId`).toBe(true);
+      expect(poiIdSet.has(trigger.poiId), `${endeavor.id}.onPoiEnter.poiId`).toBe(true);
+      for (const [i, effect] of trigger.onEnter.entries()) {
+        if (effect.type !== "DIALOGUE") continue;
+        expect(dialogueIdSet.has(effect.dialogueId as string), `${endeavor.id}.onPoiEnter.onEnter[${i}].dialogueId`).toBe(
+          true
+        );
+      }
     }
   });
 });

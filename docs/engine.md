@@ -113,28 +113,49 @@ flowchart TD
     X -->|DIALOGUE| D["resolveDialogueEntryNodeId() if nodeId absent,<br/>then dispatchCommand(COMMAND_ENTER_DIALOGUE_NODE)<br/>+ dispatchCommand(COMMAND_OPEN_DIALOGUE)"]
 ```
 
-**Effect types** (`src/engine/utils/entryEffects.ts`):
-- `{ type: "SOUND"; asset: string }` — a one-shot SFX from a POI's or
-  District's `entrySoundAsset`.
-- `{ type: "DIALOGUE"; dialogueId: string; nodeId?: string }` — from an
-  active Endeavor phase's `autoDialogueOnEnter`, or paired with...
+**Effect types** (`EntryEffect`, canonical definition in `src/engine/types/index.ts`
+alongside its Zod mirror `EntryEffectSchema`; re-exported from
+`src/engine/utils/entryEffects.ts` for existing call sites):
+- `{ type: "SOUND"; asset: string }` — a one-shot SFX.
+- `{ type: "DIALOGUE"; dialogueId: string; nodeId?: string }`.
 - `{ type: "START_ENDEAVOR"; endeavorId: string; initialPhaseId: string }` —
-  from an unstarted Endeavor's `autoStartOnEnter`. Always pushed together
-  with a matching `DIALOGUE` effect in the same computation.
+  always synthesized by `computePoiEntryEffects` from the parent `Endeavor`
+  object, never content-authored directly (see below).
+
+**Directly content-authorable, via two schema fragments** (`src/content/schemas/shared.ts`):
+`TriggerableSchema` (`onEnter: EntryEffect[]`, `.default([])`) composes into
+District/POI — an unconditional, node-local effect list fired whenever that
+node itself is entered. `PoiEntryTriggerSchema` (`{ poiId: string; onEnter: EntryEffect[] }`,
+`.strict()`) composes into `EndeavorPhase.onPoiEnter`/`Endeavor.onPoiEnter` —
+a *targeted* trigger, since a phase/endeavor isn't a spatial node the player
+"enters"; it needs an explicit target POI. Both were previously three
+independently-invented ad-hoc shapes (`entrySoundAsset`, `autoDialogueOnEnter`,
+`autoStartOnEnter`) unified once the pattern had a third real instance — see
+`docs/features/feature_triggerable_effects.md`. `Endeavor.onPoiEnter.onEnter`
+deliberately never contains an authored `START_ENDEAVOR` effect — the engine
+always synthesizes it from that same Endeavor's own `id`/`initialPhaseId`,
+avoiding a second, driftable source of truth for values already declared
+elsewhere in the same content file.
 
 **Why three trigger points, not one.** POI selection fires the full effect
-list (a genuinely new arrival). District mount only ever produces `SOUND`
-(district-level `autoDialogueOnEnter` doesn't exist — it's POI-scoped). The
-phase-change effect exists because a phase transition can make a dialogue
-trigger newly applicable *while the player is already standing in that POI*
-— `onSelectPoi` only fires at the moment of selection and would miss this.
-It's deliberately narrowed to `DIALOGUE` only: replaying entry SFX or
-re-starting an Endeavor on every unrelated phase change would be a
-regression, and it's guarded to never fire over an already-open dialogue.
+list (a genuinely new arrival). District mount only ever produces `SOUND` in
+practice today (nothing wires a district-level `DIALOGUE`/`START_ENDEAVOR`
+trigger yet, though the schema doesn't forbid it). The phase-change effect
+exists because a phase transition can make a dialogue trigger newly
+applicable *while the player is already standing in that POI* — `onSelectPoi`
+only fires at the moment of selection and would miss this. It's deliberately
+narrowed to `DIALOGUE` only: replaying entry SFX or re-starting an Endeavor
+on every unrelated phase change would be a regression, and it's guarded to
+never fire over an already-open dialogue.
 
-`START_ENDEAVOR` is a third, real variant (`entryEffects.ts:10-13`, driven by
-`Endeavor.autoStartOnEnter`) — see `docs/features/feature_dialogue_visibility_and_auto_triggers.md`'s
-addendum section for its full design rationale.
+**The `isNodeUnlocked` gate stays asymmetric and call-site-specific, not
+something the shared schema/executor absorbs.** `EndeavorPhase.onPoiEnter`
+has no unlock-check (an *active* endeavor's phase already passed the unlock
+check when the endeavor started); `Endeavor.onPoiEnter`'s not-yet-started
+path alone calls `isNodeUnlocked`, since it's evaluating an endeavor that
+could still be locked. The unification here is the effect payload shape and
+dispatch mechanics — not this gating logic, which remains bespoke inside
+`computePoiEntryEffects`.
 
 ---
 
@@ -280,7 +301,7 @@ flowchart LR
     end
 
     subgraph EngineT["src/engine/types/"]
-        Types["TS types +<br/>their Zod mirrors<br/>(StateCommandSchema, SHIFTS, ...)<br/>— the shared vocabulary"]
+        Types["TS types +<br/>their Zod mirrors<br/>(StateCommandSchema, EntryEffectSchema, SHIFTS, ...)<br/>— the shared vocabulary"]
     end
 
     subgraph Engine["src/engine/ (components, store, minigames, utils)"]
@@ -313,11 +334,11 @@ a content import):
 - `src/content/*.json` — pure data. No imports at all.
 - `src/content/schemas/*.schema.ts` — imports `zod` and sibling `./shared`.
   Two files (`dialogue.schema.ts`, `shared.ts`) additionally import **from**
-  `src/engine/types` — both a TS `type` (`DialogueRequirement`) and a real
-  runtime Zod value (`StateCommandSchema`, `SHIFTS`). So schemas are allowed
-  to depend on `src/engine/types` (where the shared vocabulary of types and
-  their Zod mirrors lives) — this is the one sanctioned cross-boundary
-  import, and it only ever runs in this direction.
+  `src/engine/types` — both a TS `type` (`DialogueRequirement`) and real
+  runtime Zod values (`StateCommandSchema`, `EntryEffectSchema`, `SHIFTS`). So
+  schemas are allowed to depend on `src/engine/types` (where the shared
+  vocabulary of types and their Zod mirrors lives) — this is the one
+  sanctioned cross-boundary import, and it only ever runs in this direction.
 - `src/engine/**` — zero imports from `src/content/`, of any kind. Verified
   by grep, not assumed; several files carry self-documenting comments
   confirming this is deliberate (`DialogueOverlay.tsx`, `ManagementDrawer.tsx`,

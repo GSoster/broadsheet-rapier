@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { BaseNodeFieldsSchema, FactionInfluenceSchema, ShiftSchema } from "./shared";
+import { BaseNodeFieldsSchema, FactionInfluenceSchema, ShiftSchema, TriggerableSchema } from "./shared";
 
 export const PoiSchema = BaseNodeFieldsSchema.extend({
   controllingFactionId: z.string().optional(),
@@ -8,6 +8,5 @@ export const PoiSchema = BaseNodeFieldsSchema.extend({
   costShifts: z.number().default(0),
   availableShifts: z.array(ShiftSchema),
   actorIds: z.array(z.string()),
-  entrySoundAsset: z.string().optional(),
-});
+}).extend(TriggerableSchema.shape);
 export type Poi = z.infer<typeof PoiSchema>;

@@ -88,6 +88,16 @@ export type MinigameLauncherPayload =
       onFailureCommands: StateCommand[];
     };
 
+// Moved here (from src/engine/utils/entryEffects.ts, which now only re-exports
+// it) once it became directly content-authorable via TriggerableSchema/
+// PoiEntryTriggerSchema (docs/features/feature_triggerable_effects.md) — the
+// shared vocabulary a content schema needs to import lives in engine/types/,
+// same as StateCommandSchema/MinigameLauncherPayloadSchema (docs/engine.md §5).
+export type EntryEffect =
+  | { type: "SOUND"; asset: string }
+  | { type: "DIALOGUE"; dialogueId: string; nodeId?: string }
+  | { type: "START_ENDEAVOR"; endeavorId: string; initialPhaseId: string };
+
 // Gates a dialogue choice's availability against PlayerState. `nodeVisits.nodeId`
 // omitted means "the node this requirement is attached to" — see the evaluator
 // for the exact (already-incremented-before-evaluation) counting semantics.
@@ -279,6 +289,14 @@ const MinigameLauncherPayloadSchema: z.ZodType<MinigameLauncherPayload> = z.disc
     onSuccessCommands: z.lazy(() => z.array(StateCommandSchema)),
     onFailureCommands: z.lazy(() => z.array(StateCommandSchema)),
   }),
+]);
+
+export const EntryEffectSchema: z.ZodType<EntryEffect> = z.discriminatedUnion("type", [
+  z.object({ type: z.literal("SOUND"), asset: z.string() }).strict(),
+  z.object({ type: z.literal("DIALOGUE"), dialogueId: z.string(), nodeId: z.string().optional() }).strict(),
+  z
+    .object({ type: z.literal("START_ENDEAVOR"), endeavorId: z.string(), initialPhaseId: z.string() })
+    .strict(),
 ]);
 
 export const PlayerStateSchema: z.ZodType<PlayerState> = z.object({

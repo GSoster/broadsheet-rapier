@@ -57,12 +57,21 @@ don't repeat them:
 - A `DialogueChoice` that ends the conversation **omits** `nextNodeId` entirely (don't set it to `null` or `""` in content — `null` is a command-*payload*-level concept, not an authored-JSON one; see `dialogue.schema.ts`'s comment on this exact distinction).
 - `minActorReputation`/`minFactionReputation`/`requiredClues`/`allowedShifts`/`nodeVisits` are all real `DialogueRequirement` fields, confirmed — reuse them freely on a choice's `requires`.
 
-## 2. `autoStartOnEnter` vs. `autoDialogueOnEnter` — which one, when
+## 2. `Endeavor.onPoiEnter` vs. `EndeavorPhase.onPoiEnter` — which one, when
 
-- **`Endeavor.autoStartOnEnter`** (`{poiId, dialogueId, nodeId?}`, on the Endeavor itself): use this for the Endeavor's *opening* scene — a witnessed or ambient moment the player didn't click into, the first time they enter a specific POI. Fires `COMMAND_START_ENDEAVOR` (with the Endeavor's `initialPhaseId`) then opens the dialogue, automatically, the first time the POI is entered while the Endeavor isn't yet in `activeEndeavors`. Never fires again once started — no re-entry guard needed in content.
-- **`EndeavorPhase.autoDialogueOnEnter`** (same shape, on a specific phase): use this for every *subsequent* scripted beat while the Endeavor is already active — a scene that should just happen when the player reaches the right POI at the right phase, no click required.
-- **A phase's ending dialogue choice never dispatches `COMMAND_START_ENDEAVOR`** — only the very first scene does, and only via `autoStartOnEnter`. Every later phase transition is `COMMAND_ADVANCE_ENDEAVOR_PHASE`.
-- **The same-POI chain (the important one to get right):** `autoDialogueOnEnter` fires on the `onSelectPoi` entry moment *and* on a phase-change `useEffect` that catches the case where the player is already standing in the POI when the phase advances. This means two consecutive phases can both auto-trigger at the *same* POI with no re-entry in between — confirmed twice now (tavern: challenge → recruit; Widowmaker Alley: arrival → offer). You don't need to merge two beats into one Dialogue file to work around a re-entry requirement; author them as separate phases/Dialogues and let the chain handle it, as long as the ending choice of the first (a) has no `nextNodeId` (so it closes the dialogue) and (b) dispatches `COMMAND_ADVANCE_ENDEAVOR_PHASE` in its `commands`. Both conditions are required — the phase-change effect is guarded on `activeDialogue === null`, so a choice that omits `nextNodeId` but forgets to end up with `activeDialogue` cleared won't fire it, and a choice that advances the phase but keeps `nextNodeId` set won't close the dialogue either.
+Both fields share one shape, `{ poiId: string; onEnter: EntryEffect[] }`
+(`PoiEntryTriggerSchema` — formerly two separately-named, independently
+ad-hoc fields, `autoStartOnEnter`/`autoDialogueOnEnter`, unified in
+`docs/features/feature_triggerable_effects.md`; if you see either old name
+in an existing content file or older doc prose, that's stale, not a second
+real mechanism). `onEnter` is an array — in practice, for a dialogue
+auto-trigger, author exactly one `{ "type": "DIALOGUE", "dialogueId": "...", "nodeId"?: "..." }`
+entry in it, matching every real instance built so far.
+
+- **`Endeavor.onPoiEnter`** (on the Endeavor itself): use this for the Endeavor's *opening* scene — a witnessed or ambient moment the player didn't click into, the first time they enter a specific POI. The engine auto-fires `COMMAND_START_ENDEAVOR` (with the Endeavor's own `initialPhaseId`) *before* running `onEnter`'s effects, automatically, the first time the POI is entered while the Endeavor isn't yet in `activeEndeavors` — **never author a `START_ENDEAVOR` effect yourself inside `onEnter`**; the engine always synthesizes it from the Endeavor's own `id`/`initialPhaseId`, so a content-authored one would be a second, driftable source of truth for a fact the file already states. Never fires again once started — no re-entry guard needed in content.
+- **`EndeavorPhase.onPoiEnter`** (same shape, on a specific phase): use this for every *subsequent* scripted beat while the Endeavor is already active — a scene that should just happen when the player reaches the right POI at the right phase, no click required.
+- **A phase's ending dialogue choice never dispatches `COMMAND_START_ENDEAVOR`** — only the very first scene does, and only via `Endeavor.onPoiEnter`. Every later phase transition is `COMMAND_ADVANCE_ENDEAVOR_PHASE`.
+- **The same-POI chain (the important one to get right):** `onPoiEnter`'s `DIALOGUE` effect fires on the `onSelectPoi` entry moment *and* on a phase-change `useEffect` that catches the case where the player is already standing in the POI when the phase advances. This means two consecutive phases can both auto-trigger at the *same* POI with no re-entry in between — confirmed twice now (tavern: challenge → recruit; Widowmaker Alley: arrival → offer). You don't need to merge two beats into one Dialogue file to work around a re-entry requirement; author them as separate phases/Dialogues and let the chain handle it, as long as the ending choice of the first (a) has no `nextNodeId` (so it closes the dialogue) and (b) dispatches `COMMAND_ADVANCE_ENDEAVOR_PHASE` in its `commands`. Both conditions are required — the phase-change effect is guarded on `activeDialogue === null`, so a choice that omits `nextNodeId` but forgets to end up with `activeDialogue` cleared won't fire it, and a choice that advances the phase but keeps `nextNodeId` set won't close the dialogue either.
 - **A `DUEL` (or any minigame) outcome can open a dialogue too**, via `onSuccessCommands`/`onFailureCommands` dispatching `COMMAND_ENTER_DIALOGUE_NODE` + `COMMAND_OPEN_DIALOGUE` together (with an explicit `nodeId`, since nothing resolves "resume" logic inside a command payload) — this is how a duel's win/lose narration opens automatically without a third trigger mechanism.
 
 ## 3. `isUnlocked` / `unlocksNodesOnComplete` for staged reveals
@@ -85,10 +94,10 @@ decide explicitly:
   give them `isUnlocked: true` and a **separate, small, standalone
   default Dialogue** for `dialogueId` (a two-line brush-off is enough).
   Never point their `dialogueId` at the one scripted scene they
-  currently appear in — that scene opens via `autoStartOnEnter`/
-  `autoDialogueOnEnter`, never by clicking them, and conflating the two
-  breaks the moment a second Endeavor wants different content from the
-  same Actor.
+  currently appear in — that scene opens via `Endeavor.onPoiEnter`/
+  `EndeavorPhase.onPoiEnter`, never by clicking them, and conflating the
+  two breaks the moment a second Endeavor wants different content from
+  the same Actor.
 - **If the Actor exists only for this one Endeavor and has a real
   "come back and reconsider" case** (a recruit who can be re-approached
   after declining — e.g. `actor_anselm_draye`): it's fine to point
@@ -111,7 +120,7 @@ decide explicitly:
 ## 5. Standing checklist: the chained-trigger test
 
 **Not something to be reminded of per prompt — run this every time a
-new phase chain relies on `autoDialogueOnEnter`/`autoStartOnEnter`,
+new phase chain relies on `onPoiEnter` (Endeavor- or phase-level),
 without being asked.** Automated referential-integrity checks
 (`content-integrity.test.ts`) confirm every trigger's `poiId`/`dialogueId`
 *resolves*, but they do not confirm the trigger actually *fires* at the

@@ -4,7 +4,7 @@
   "description": "A dockside tangle of leaning tenements and lamp-lit alleys, named for the iron lanterns the City Watch keeps burning against the fog. Half the district makes an honest living hauling cargo off the barges; the other half makes a living pretending to.",
   "isUnlocked": true,
   "imageAsset": "/content/assets/images/districts/lantern_ward_bg.webp",
-  "entrySoundAsset": "/content/assets/audio/lantern_ward_entry.mp3",
+  "onEnter": [{ "type": "SOUND", "asset": "/content/assets/audio/lantern_ward_entry.mp3" }],
   "controllingFactionId": "faction_city_watch",
   "factionInfluence": { "faction_city_watch": 55 },
   "settlementId": "settlement_valdeombra_city",
