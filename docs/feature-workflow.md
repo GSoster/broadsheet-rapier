@@ -34,16 +34,21 @@ Seven repeatable risk categories showed up across this project's phases so far, 
 
 1. **Intake** — the feature/content idea is described in conversation (by you, or later, an AI-authored adventure outline — see §6).
 2. **Classify** — Feature/Engine spec or Content/Adventure spec (templates in §4). Small fixes and pure process/infra work (a CI tweak, a skill update, a one-off doc correction) stay outside this workflow; `docs/decisions.md` alone still covers those, as it always has.
-3. **Sequencing** — if this is a Content/Adventure spec, confirm every engine capability it needs already exists (§4's "existing-capability check" is the actual gate, not a separate step). **Content development is its own phase, sequenced after the engine/feature phase(s) it depends on** — not a per-instance pause-or-substitute decision made mid-implementation. If the existing-capability check finds a gap, that gap becomes (or maps to) a Feature/Engine spec, and the content spec's implementation waits until that feature spec is built and landed. This is the default assumption for how content work gets sequenced, not a rule that only fires when a surprise gap turns up — and it applies the same way regardless of whether the content spec was human- or AI-authored.
-4. **Draft the spec** as a real file under `docs/features/` (§3) — the gate that catches categories B, C, D, F before code, the way review just did for audio's `onLeave` case.
-5. **Review** — conversational; approval gate before implementation starts.
-6. **Implement**, per the existing Definition of Done (`tsc`/`test`/`lint`, tests alongside logic).
-7. **Reachability check** — for anything with a player-facing entry point, verify it from a genuinely fresh state: the dev-only **Reset Progress** button (`ManagementDrawer`) + reload, not hand-clearing `localStorage`. Targets category A. Manual — see the enforcement note in §1.
-8. **Consistency sweep** — grep for other references to whatever entity/value this feature touched. Targets category C. Also manual — `content-integrity.test.ts`'s referential-integrity checks (§5) catch *broken references* automatically, but not attribute-level drift like a stale title.
-9. **Docs sync** — re-read any doc paragraph whose truth this feature changed, not just the section being added to. If this feature changed the CQRS dispatch flow, `EntryEffect` pattern, Dialogue system, Minigame system, or the `src/engine`↔`src/content` boundary, `docs/engine.md` must be updated to match — it's a living reference, not a one-time snapshot.
-10. **CHANGELOG.md entry** — required, not optional, per the existing Definition of Done.
-11. **decisions.md entries** for non-obvious calls — unchanged from current practice.
-12. **Spec status update** — mark the spec `Implemented`, linking to its CHANGELOG entry and decisions.md entries. Closes the loop.
+3. **Issue.** Every phase that reaches stage 5 (Draft the spec) needs an open GitHub issue tracking it, using stage 2's classification:
+   - **If this originated from an existing Backlog issue** (`gh issue list --label feature-engine` / `--label content-adventure`, or the Project board's Backlog column), reuse and update that issue — don't create a duplicate. Move it out of Backlog on the Project board as work actually starts.
+   - **If this was decided live** (in conversation, not pre-captured), create one now via `gh issue create --template feature_engine.yml` or `--template content_adventure.yml` (`.github/ISSUE_TEMPLATE/`), matching stage 2's classification — before stage 7 (Implement) starts.
+   - Small fixes/pure process work that stay outside this workflow (per stage 2's carve-out) don't need an issue — same scope boundary as the rest of this process.
+4. **Sequencing** — if this is a Content/Adventure spec, confirm every engine capability it needs already exists (§4's "existing-capability check" is the actual gate, not a separate step). **Content development is its own phase, sequenced after the engine/feature phase(s) it depends on** — not a per-instance pause-or-substitute decision made mid-implementation. If the existing-capability check finds a gap, that gap becomes (or maps to) a Feature/Engine spec, and the content spec's implementation waits until that feature spec is built and landed. This is the default assumption for how content work gets sequenced, not a rule that only fires when a surprise gap turns up — and it applies the same way regardless of whether the content spec was human- or AI-authored.
+5. **Draft the spec** as a real file under `docs/features/` (§3) — the gate that catches categories B, C, D, F before code, the way review just did for audio's `onLeave` case. References the stage-3 issue number in its own **Issue** field (§4).
+6. **Review** — conversational; approval gate before implementation starts.
+7. **Implement**, per the existing Definition of Done (`tsc`/`test`/`lint`, tests alongside logic).
+8. **Reachability check** — for anything with a player-facing entry point, verify it from a genuinely fresh state: the dev-only **Reset Progress** button (`ManagementDrawer`) + reload, not hand-clearing `localStorage`. Targets category A. Manual — see the enforcement note in §1.
+9. **Consistency sweep** — grep for other references to whatever entity/value this feature touched. Targets category C. Also manual — `content-integrity.test.ts`'s referential-integrity checks (§5) catch *broken references* automatically, but not attribute-level drift like a stale title.
+10. **Docs sync** — re-read any doc paragraph whose truth this feature changed, not just the section being added to. If this feature changed the CQRS dispatch flow, `EntryEffect` pattern, Dialogue system, Minigame system, or the `src/engine`↔`src/content` boundary, `docs/engine.md` must be updated to match — it's a living reference, not a one-time snapshot.
+11. **CHANGELOG.md entry** — required, not optional, per the existing Definition of Done.
+12. **decisions.md entries** for non-obvious calls — unchanged from current practice.
+13. **Spec status update** — mark the spec `Implemented`, linking to its CHANGELOG entry and decisions.md entries.
+14. **Close issue** — close the stage-3 issue with a comment linking the shipping commit hash(es), the `docs/features/` spec, and the CHANGELOG.md entry. Closes the loop: issue → spec → commit → CHANGELOG, each pointing to the next.
 
 ---
 
@@ -53,7 +58,7 @@ Seven repeatable risk categories showed up across this project's phases so far, 
 
 **Revisit trigger:** once `docs/features/` exceeds roughly 20 files, revisit whether a flat directory (plus the README index) is still the right structure, or whether it needs subdividing (e.g. by type, or an archive for long-superseded specs). Same discipline already applied to the nested-`CLAUDE.md` deferral in §7 — a concrete, checkable trigger, not "eventually."
 
-**Cross-referencing:** a spec's `## Status` line points forward to its CHANGELOG entry and decisions.md entries once implemented. CHANGELOG entries substantial enough to have gotten a spec link back to it. Not mandatory for every single line — not every change is spec-worthy.
+**Cross-referencing:** a spec's `## Status` line points forward to its CHANGELOG entry and decisions.md entries once implemented. CHANGELOG entries substantial enough to have gotten a spec link back to it. Not mandatory for every single line — not every change is spec-worthy. The chain now extends one link further back: a spec's **Issue** field (§4) points to the GitHub issue that tracked it from stage 3 onward, and that issue's closing comment (§2 stage 14) is the one place all four links — issue, spec, shipping commit(s), CHANGELOG entry — are gathered together.
 
 ---
 
@@ -63,7 +68,8 @@ Seven repeatable risk categories showed up across this project's phases so far, 
 
 - **Goal** — one paragraph, player-facing.
 - **Classification** — Feature/Engine or Content/Adventure.
-- **Existing-capability check** — what commands/schemas/content/patterns already cover part of this. Explicit sub-question: *if reusing an existing primitive, does this change what it means to its other consumers?* (targets B). For a Content/Adventure spec, this section **is** the sequencing gate from §2 stage 3 — any gap found here becomes a Feature/Engine spec dependency, not something worked around inline.
+- **Issue** — the GitHub issue number tracking this phase (§2 stage 3): reused from an existing Backlog issue, or created at Draft time if this was decided live. Closed at stage 14 with a comment linking the shipping commit(s), this spec, and the CHANGELOG entry.
+- **Existing-capability check** — what commands/schemas/content/patterns already cover part of this. Explicit sub-question: *if reusing an existing primitive, does this change what it means to its other consumers?* (targets B). For a Content/Adventure spec, this section **is** the sequencing gate from §2 stage 4 — any gap found here becomes a Feature/Engine spec dependency, not something worked around inline.
 - **Integration points** — every dispatch/mount/trigger location this hooks into, each with a one-line justification of *why that's the correct semantic moment*. This is the exact question that caught the `onLeave` mistake before it shipped; the template makes it mandatory instead of incidental.
 - **Reachability** — how does a brand-new player, from a fresh save, actually encounter this? (targets A)
 - **Consistency check** — what other content/docs reference the thing(s) this touches? (targets C)
@@ -82,7 +88,7 @@ Seven repeatable risk categories showed up across this project's phases so far, 
 
 ### Content/Adventure spec adds
 
-- References **only** existing engine capability — no new command types, minigame types, or schema fields. (If one's needed, see §2 stage 3 — this spec waits on a Feature/Engine spec, it doesn't invent inline.)
+- References **only** existing engine capability — no new command types, minigame types, or schema fields. (If one's needed, see §2 stage 4 — this spec waits on a Feature/Engine spec, it doesn't invent inline.)
 - Endeavor phase outline: phases, required clues, unlock triggers, which existing `MinigameType`s are involved, which existing commands drive reputation/currency effects.
 - Actor/District/POI list — existing entities reused vs. new ones authored (new ones still validate against existing schemas only).
 - **Tone check** — explicit reference to `narrative-inspirations.md`'s priority hierarchy and `world-lore.md`'s era constraints. Content specs are precisely where tone/lore drift would first appear. Authorship-agnostic — applies the same whether a human or an AI drafted the outline.
@@ -94,7 +100,7 @@ Seven repeatable risk categories showed up across this project's phases so far, 
 
 Beyond schema validation, this file also checks that cross-references between content files actually resolve: `Actor.factionIds` → existing `Faction`, `POI.actorIds` → existing `Actor` (and the reverse: that `Actor`'s `poiId` points back), `District.poiIds` → existing `POI` (and the reverse: that `POI`'s `districtId` points back). This catches a **broken reference** automatically — a typo'd id, a deleted file nothing else was updated for.
 
-**It does not catch attribute-level drift** — a title or description going stale after a related field changes (category C's actual failure mode, e.g. Mara Venn's title). That still needs the manual consistency sweep (§2 stage 8). Referential integrity and attribute consistency are different problems; only the first is automatable with the current content model.
+**It does not catch attribute-level drift** — a title or description going stale after a related field changes (category C's actual failure mode, e.g. Mara Venn's title). That still needs the manual consistency sweep (§2 stage 9). Referential integrity and attribute consistency are different problems; only the first is automatable with the current content model.
 
 Scoped deliberately to the three relationships above. Other reference-shaped fields (`controllingFactionId`, `factionInfluence` keys, `District.settlementId`, `Endeavor.unlocksNodesOnComplete`) are equally checkable in principle but out of scope for this pass — noted so the gap is explicit, not silently assumed covered.
 
@@ -104,8 +110,8 @@ Scoped deliberately to the three relationships above. Other reference-shaped fie
 
 Flagging where this workflow currently assumes a human wrote the outline, since content specs may eventually be AI-proposed (per your stated intent to eventually have adventures proposed as a surprise, not just authored by you):
 
-- **Review (§2 stage 5)** currently assumes proposer and reviewer share a trust boundary. An AI-drafted outline needs a distinct review role before it's trusted enough to implement — not designed here.
-- **§2 stage 3's sequencing rule** assumes a human decides when a capability gap exists and how it's resolved. Whether an AI outline-generator may identify and request new engine capability, or must always stay within existing capability and flag gaps for a human to triage, is open.
+- **Review (§2 stage 6)** currently assumes proposer and reviewer share a trust boundary. An AI-drafted outline needs a distinct review role before it's trusted enough to implement — not designed here.
+- **§2 stage 4's sequencing rule** assumes a human decides when a capability gap exists and how it's resolved. Whether an AI outline-generator may identify and request new engine capability, or must always stay within existing capability and flag gaps for a human to triage, is open.
 - The **tone-check** and **balance-flag** sections are validation steps, not authorship-dependent — they're written to work unchanged regardless of who drafted the outline.
 
 ---

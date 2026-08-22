@@ -9,18 +9,20 @@ This is a solo, closed-source project (see `LICENSE`). This file exists to keep 
 3. If a task isn't covered by the docs, stop and ask. Don't assume or invent an answer.
 4. For anything feature-shaped (new engine capability, new minigame, new content/adventure) beyond a small fix, follow `docs/feature-workflow.md` — draft a spec under `docs/features/` before implementing, per that doc's process.
 
-## Backlog: Issues vs. Specs
+## Issues: Every Phase Gets One
 
-Ideas get captured as lightweight GitHub Issues (`feature_engine.yml` or
-`content_adventure.yml` templates) as they come up in discussion — title,
-short description, a rough note on existing capability/content touched.
-This is intake only, not a substitute for `docs/feature-workflow.md`.
+Every phase of work that goes through `docs/feature-workflow.md` (Feature/
+Engine or Content/Adventure — not the small-fix/process-work carve-out) gets
+a GitHub issue as its first real stage, not just backlog-sourced ideas. If it
+started as a captured Backlog idea, that issue is reused and updated, not
+duplicated. If it was decided live in conversation, an issue is created
+before implementation starts, using `feature_engine.yml` or
+`content_adventure.yml` (`.github/ISSUE_TEMPLATE/`).
 
-Flow: idea discussed -> captured as an Issue -> sits in the "Backlog" column
-of the GitHub Project -> when picked up, a real spec is written under
-`docs/features/` per `feature-workflow.md` as usual, moving the issue to
-"In Progress" -> issue closed (linked to the spec/PR) once the spec's status
-is Implemented.
+On completion, the issue is closed with a comment linking the shipping
+commit hash(es), the `docs/features/` spec, and the CHANGELOG.md entry — one
+clickable chain: issue → spec → commit → CHANGELOG. See
+`docs/feature-workflow.md` §2 for the full stage-by-stage process.
 
 Issues are not a replacement for spec rigor — full existing-capability
 analysis, classification detail, and tone/lore checks still happen only in

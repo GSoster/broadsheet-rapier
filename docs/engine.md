@@ -3,7 +3,7 @@
 An onboarding and running reference for how the engine's major pieces
 actually interact — grounded in the current code, not the aspirational
 version described elsewhere. This is a **living document**: per
-`docs/feature-workflow.md` §2 stage 9 ("Docs sync"), any feature that changes
+`docs/feature-workflow.md` §2 stage 10 ("Docs sync"), any feature that changes
 one of the flows below must update this file in the same phase.
 
 For *what* the game is (domain rules, independent of implementation), see

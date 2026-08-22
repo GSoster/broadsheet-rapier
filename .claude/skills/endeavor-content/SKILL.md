@@ -16,7 +16,7 @@ needs something neither of those two actually did, that's a real gap —
 flag it, don't guess.
 
 This is content work, not engine work: per `docs/feature-workflow.md`
-§2 stage 3, if anything here turns out to need a *new* command type,
+§2 stage 4, if anything here turns out to need a *new* command type,
 schema field, or minigame type, that's a Feature/Engine spec
 dependency, not something to invent inline.
 
