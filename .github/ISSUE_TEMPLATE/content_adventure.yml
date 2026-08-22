@@ -1,0 +1,37 @@
+name: Content / Adventure idea
+description: Capture a lightweight idea for story/content (an Endeavor, Actor, POI, etc.). Intake only — a real spec still gets written under docs/features/ per docs/feature-workflow.md before implementation.
+labels:
+  - content-adventure
+body:
+  - type: markdown
+    attributes:
+      value: |
+        This is intake only, not a spec. Full tone/lore checks and design detail happen in a `docs/features/` spec at pickup time.
+  - type: input
+    id: title
+    attributes:
+      label: Title
+      description: Short, specific name for the idea.
+    validations:
+      required: true
+  - type: textarea
+    id: description
+    attributes:
+      label: Description
+      description: What's the idea, briefly?
+    validations:
+      required: true
+  - type: textarea
+    id: existing-content
+    attributes:
+      label: Which existing actors/districts/POIs/factions might this involve, or need new?
+      description: Rough notes only.
+    validations:
+      required: false
+  - type: textarea
+    id: engine-gap
+    attributes:
+      label: Does this need any engine capability that might not exist yet?
+      description: Free-text — flag any gap, don't try to resolve it here.
+    validations:
+      required: false

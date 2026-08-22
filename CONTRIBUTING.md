@@ -9,6 +9,23 @@ This is a solo, closed-source project (see `LICENSE`). This file exists to keep 
 3. If a task isn't covered by the docs, stop and ask. Don't assume or invent an answer.
 4. For anything feature-shaped (new engine capability, new minigame, new content/adventure) beyond a small fix, follow `docs/feature-workflow.md` — draft a spec under `docs/features/` before implementing, per that doc's process.
 
+## Backlog: Issues vs. Specs
+
+Ideas get captured as lightweight GitHub Issues (`feature_engine.yml` or
+`content_adventure.yml` templates) as they come up in discussion — title,
+short description, a rough note on existing capability/content touched.
+This is intake only, not a substitute for `docs/feature-workflow.md`.
+
+Flow: idea discussed -> captured as an Issue -> sits in the "Backlog" column
+of the GitHub Project -> when picked up, a real spec is written under
+`docs/features/` per `feature-workflow.md` as usual, moving the issue to
+"In Progress" -> issue closed (linked to the spec/PR) once the spec's status
+is Implemented.
+
+Issues are not a replacement for spec rigor — full existing-capability
+analysis, classification detail, and tone/lore checks still happen only in
+the `docs/features/` spec at pickup time.
+
 ## Commit Conventions
 
 Conventional Commits format: `type(scope): summary`

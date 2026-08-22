@@ -1,0 +1,18 @@
+name: Auto-assign issues
+
+on:
+  issues:
+    types: [opened]
+
+permissions:
+  issues: write
+
+jobs:
+  assign:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Assign to GSoster
+        run: gh issue edit "$ISSUE_URL" --add-assignee GSoster
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ISSUE_URL: ${{ github.event.issue.html_url }}
