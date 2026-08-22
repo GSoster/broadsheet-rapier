@@ -40,7 +40,7 @@ Seven repeatable risk categories showed up across this project's phases so far, 
 6. **Implement**, per the existing Definition of Done (`tsc`/`test`/`lint`, tests alongside logic).
 7. **Reachability check** — for anything with a player-facing entry point, verify it from a genuinely fresh state: the dev-only **Reset Progress** button (`ManagementDrawer`) + reload, not hand-clearing `localStorage`. Targets category A. Manual — see the enforcement note in §1.
 8. **Consistency sweep** — grep for other references to whatever entity/value this feature touched. Targets category C. Also manual — `content-integrity.test.ts`'s referential-integrity checks (§5) catch *broken references* automatically, but not attribute-level drift like a stale title.
-9. **Docs sync** — re-read any doc paragraph whose truth this feature changed, not just the section being added to.
+9. **Docs sync** — re-read any doc paragraph whose truth this feature changed, not just the section being added to. If this feature changed the CQRS dispatch flow, `EntryEffect` pattern, Dialogue system, Minigame system, or the `src/engine`↔`src/content` boundary, `docs/engine.md` must be updated to match — it's a living reference, not a one-time snapshot.
 10. **CHANGELOG.md entry** — required, not optional, per the existing Definition of Done.
 11. **decisions.md entries** for non-obvious calls — unchanged from current practice.
 12. **Spec status update** — mark the spec `Implemented`, linking to its CHANGELOG entry and decisions.md entries. Closes the loop.
