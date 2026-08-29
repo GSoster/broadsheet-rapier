@@ -68,6 +68,7 @@ test(schemas): add POI schema validation fixtures
 - All JSON under `src/content/` must validate against its Zod schema before being committed. `npm run test` enforces this automatically via `content-integrity.test.ts` — a new content file that fails schema validation fails the suite, no separate step needed.
 - Tone and mechanics follow the priority hierarchy in `docs/narrative-inspirations.md` — Section 1 for character/dialogue/quests, Section 2 for atmosphere, Section 3 for UI/interaction only (never narrative tone).
 - Era/tech/magic constraints in `docs/world-lore.md` are strict, not suggestions (no anachronistic tech, no high-fantasy combat magic).
+- **New content ships a `pt-BR` locale overlay in the same phase it's authored**, not as separate follow-on work — a `<id>.pt-BR.json` sibling file covering that content type's translatable fields (see `docs/web-implementation.md` §5b). Personal proper names stay untranslated (omit them from the overlay). This applies to new content only, not a retrofit requirement for anything already shipped.
 
 ## Changelog
 

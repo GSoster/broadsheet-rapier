@@ -1,0 +1,10 @@
+{
+  "nodes": {
+    "node_victory": {
+      "text": "Ele abaixa a lâmina, respirando com dificuldade, e há algo quase como respeito nisso. \"Dívida quitada. O Círculo está satisfeito.\" Ele acena uma vez para a espada. \"Essa é sua agora, se você conseguir segurá-la melhor do que ele conseguiu.\"",
+      "choices": [
+        { "id": "choice_take_winnings", "text": "Aceitar o pagamento e a espada." }
+      ]
+    }
+  }
+}

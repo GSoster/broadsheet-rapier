@@ -84,11 +84,33 @@ export function mergeDialogueTranslatable(canonical: Dialogue, overlay: Dialogue
 }
 
 /**
- * Parses the canonical file through the existing loadContent unchanged, then
- * — if a locale overlay exists for it — parses the overlay through its own
- * schema and merges it on top via the supplied merge function. Passing
+ * The overlay-only half: given an ALREADY-PARSED canonical value, parses the
+ * overlay (if one exists for the current locale) through its own schema and
+ * merges it on top via the supplied merge function. Passing
  * `overlayRaw: undefined` (the common case until a file is actually
- * translated) is a pure pass-through to the canonical value.
+ * translated) is a pure pass-through to the canonical value. This is what
+ * `App.tsx` uses directly for every content instance — canonical parsing
+ * already happens once at module scope via `loadContent`, so re-parsing it
+ * on every locale change would be pure waste.
+ */
+export function applyLocaleOverlay<T, O>(
+  canonical: T,
+  overlaySchema: z.ZodType<O>,
+  overlayRaw: unknown | undefined,
+  label: string,
+  merge: (canonical: T, overlay: O | undefined) => T
+): T {
+  if (overlayRaw === undefined) return canonical;
+  const overlay = loadContent(overlaySchema, overlayRaw, `${label} (overlay)`);
+  return merge(canonical, overlay);
+}
+
+/**
+ * Parses the canonical file through the existing loadContent unchanged, then
+ * applies `applyLocaleOverlay` on top. Kept as a convenience wrapper for
+ * callers (and tests) that don't already have a parsed canonical value on
+ * hand — `App.tsx` itself uses `applyLocaleOverlay` directly instead, since
+ * it always does.
  */
 export function loadLocalizedContent<T, O>(
   schema: z.ZodType<T>,
@@ -98,8 +120,5 @@ export function loadLocalizedContent<T, O>(
   label: string,
   merge: (canonical: T, overlay: O | undefined) => T
 ): T {
-  const canonical = loadContent(schema, raw, label);
-  if (overlayRaw === undefined) return canonical;
-  const overlay = loadContent(overlaySchema, overlayRaw, `${label} (overlay)`);
-  return merge(canonical, overlay);
+  return applyLocaleOverlay(loadContent(schema, raw, label), overlaySchema, overlayRaw, label, merge);
 }

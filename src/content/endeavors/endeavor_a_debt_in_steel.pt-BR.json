@@ -1,0 +1,27 @@
+{
+  "title": "Uma Dívida em Aço",
+  "description": "Um devedor do Círculo das Apostas tem três dias para quitar doze pratas que não possui — em moeda, em espécie, ou em sangue, devidamente testemunhado. O Beco das Viúvas é onde a papelada sempre termina.",
+  "phases": {
+    "phase_the_challenge": {
+      "objectiveText": "Testemunhe o Contador ler os termos da dívida de Anselm Draye."
+    },
+    "phase_the_second": {
+      "objectiveText": "Anselm Draye está pedindo um favor — ouça o que ele tem a dizer."
+    },
+    "phase_arrival_widowmaker": {
+      "objectiveText": "Fique ao lado de Anselm no Beco das Viúvas quando a dívida vencer."
+    },
+    "phase_the_offer": {
+      "objectiveText": "Anselm quer que você lute no lugar dele. Decida."
+    },
+    "phase_the_duel": {
+      "objectiveText": "Enfrente Duro Vantry no lugar de Anselm."
+    },
+    "phase_the_reckoning": {
+      "objectiveText": "O duelo terminou — veja como a dívida é quitada."
+    },
+    "phase_resolved": {
+      "objectiveText": "A dívida está quitada, de um jeito ou de outro."
+    }
+  }
+}

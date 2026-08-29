@@ -51,10 +51,17 @@ import { ItemSchema, type Item } from "./content/schemas/item.schema";
 import { FactionSchema } from "./content/schemas/faction.schema";
 import { BaseNodeTranslatableSchema } from "./content/schemas/shared";
 import { ActorTranslatableSchema } from "./content/schemas/actor.schema";
+import { EndeavorTranslatableSchema } from "./content/schemas/endeavor.schema";
 import { DialogueTranslatableSchema } from "./content/schemas/dialogue.schema";
 import type { ItemDisplayData, RosterEntryData } from "./engine/components/ManagementDrawer";
 import { loadContent } from "./contentLoader";
-import { loadLocalizedContent, mergeActorTranslatable, mergeBaseNodeTranslatable, mergeDialogueTranslatable } from "./contentLocalization";
+import {
+  applyLocaleOverlay,
+  mergeActorTranslatable,
+  mergeBaseNodeTranslatable,
+  mergeDialogueTranslatable,
+  mergeEndeavorTranslatable,
+} from "./contentLocalization";
 import { resolveDialogueEntryNodeId } from "./dialogueResolution";
 import { collectActiveModifiers } from "./modifierResolution";
 import { computeDistrictEntryEffects, computePoiEntryEffects, type EntryEffect } from "./engine/utils/entryEffects";
@@ -63,6 +70,7 @@ import { isNodeUnlocked } from "./engine/utils/isNodeUnlocked";
 // Every content file is parsed through its schema here, once, at module
 // load — see contentLoader.ts for why. Nothing below this point ever reads
 // a *Raw import directly.
+const settlement = loadContent(SettlementSchema, settlementRaw, "settlement_valdeombra_city");
 const district = loadContent(DistrictSchema, districtRaw, "district_lantern_ward");
 const poi = loadContent(PoiSchema, poiRaw, "poi_crooked_hour_tavern");
 const poiWidowmakerAlley = loadContent(PoiSchema, poiWidowmakerAlleyRaw, "poi_widowmaker_alley");
@@ -115,7 +123,6 @@ const dialogueList = [
   dialogueReckoningWin,
   dialogueReckoningLose,
 ];
-const dialogues = Object.fromEntries(dialogueList.map((d) => [d.id, d]));
 const itemDuellistsRapier = loadContent(ItemSchema, itemDuellistsRapierRaw, "item_duellists_rapier");
 const itemLetterOfIntroduction = loadContent(ItemSchema, itemLetterOfIntroductionRaw, "item_letter_of_introduction");
 const itemPendantOfEasyCoin = loadContent(ItemSchema, itemPendantOfEasyCoinRaw, "item_pendant_of_easy_coin");
@@ -126,15 +133,10 @@ const itemList = [
   itemLetterOfIntroduction,
   itemPendantOfEasyCoin,
 ];
-const itemsById: Record<string, ItemDisplayData> = Object.fromEntries(
-  itemList.map((item) => [
-    item.id,
-    { name: item.name, description: item.description, imageAsset: item.imageAsset },
-  ])
-);
-// Full parsed Item objects (including `modifiers`) — distinct from
-// itemsById's display-only subset above, which ManagementDrawer consumes.
-// modifierResolution.ts's collectActiveModifiers needs the whole Item.
+// Full parsed (canonical, English) Item objects, keyed by id —
+// modifierResolution.ts's collectActiveModifiers only ever needs `.modifiers`,
+// which a locale overlay never touches (only name/description do), so this
+// deliberately stays module-scope/English rather than recomputed per locale.
 const itemRecordsById: Record<string, Item> = Object.fromEntries(itemList.map((item) => [item.id, item]));
 // Locale overlay discovery — a glob (not per-file static imports, which
 // would break the build for every not-yet-translated file) since most
@@ -156,18 +158,13 @@ for (const [path, data] of Object.entries(ptBrOverlayModules)) {
 
 const ENDEAVOR_ID = "endeavor_the_missing_broadsheet";
 
-// Content-derived lookup maps feeding notificationResolution.ts — small and
-// cheap enough to build unconditionally at module load. actorNames/
-// factionNames themselves are NOT built here — Actor/Faction names can be
-// locale-translated, so those two are computed reactively inside App() as
-// localizedActorNames/localizedFactionNames instead (see the `localized`
-// memo below). itemNames/endeavorTitles stay module-scope: no item or
-// endeavor is translated this phase.
-const itemNames = Object.fromEntries(itemList.map((item) => [item.id, item.name]));
-const endeavorTitles = Object.fromEntries(endeavors.map((e) => [e.id, e.title]));
-const phaseObjectives = Object.fromEntries(
-  endeavors.map((e) => [e.id, Object.fromEntries(Object.entries(e.phases).map(([phaseId, phase]) => [phaseId, phase.objectiveText]))])
-);
+// Every content-derived lookup map that could carry translated text
+// (item/endeavor names, titles, objective text) is computed reactively
+// inside App() instead (localizedItemNames, localizedEndeavorTitles,
+// localizedPhaseObjectives, etc. — see the localization block below).
+// phaseIsTerminal below is the one exception: it's purely structural
+// (whether a phase has nextPhaseOnSuccess), never translated text, so it
+// stays module-scope against the canonical English endeavors.
 // Same "no nextPhaseOnSuccess = terminal = reaching it is the
 // representation of completion" rule the notification system's
 // Endeavor-completion effect uses (web-implementation.md §3/§10) — reused
@@ -190,82 +187,118 @@ function App() {
     i18n.changeLanguage(locale);
   }, [locale]);
 
-  // Locale-resolved versions of the six content instances this phase
-  // translates (the vertical slice). Recomputed on every locale change —
-  // NOT memoized only on mount — so a dialogue already open when the
-  // player switches language updates live, not just the next time it's
-  // opened (docs/features/feature_localization.md's Reachability section).
-  // Every other content instance (untranslated) is used straight from its
-  // module-scope English parse, unaffected.
-  const localized = useMemo(() => {
-    const overlayFor = (id: string) => (locale === "en" ? undefined : ptBrOverlaysById[id]);
-    return {
-      settlement: loadLocalizedContent(
-        SettlementSchema,
+  // Locale-resolved versions of EVERY content instance — generic, not a
+  // hardcoded per-entity list, so a newly-authored overlay file (any
+  // content type, any id) is picked up automatically. Each `useMemo` is
+  // keyed on `locale` and recomputes on every change — NOT memoized only on
+  // mount — so a dialogue already open when the player switches language
+  // updates live, not just the next time it's opened
+  // (docs/features/feature_localization.md's Reachability section). An id
+  // with no overlay file for the current locale is a pure pass-through to
+  // the canonical English value via `applyLocaleOverlay`.
+  const localizedSettlement = useMemo(
+    () =>
+      applyLocaleOverlay(
+        settlement,
         BaseNodeTranslatableSchema,
-        settlementRaw,
-        overlayFor("settlement_valdeombra_city"),
-        "settlement_valdeombra_city",
+        locale === "en" ? undefined : ptBrOverlaysById[settlement.id],
+        settlement.id,
         mergeBaseNodeTranslatable
       ),
-      district: loadLocalizedContent(
-        DistrictSchema,
+    [locale]
+  );
+  const localizedDistrict = useMemo(
+    () =>
+      applyLocaleOverlay(
+        district,
         BaseNodeTranslatableSchema,
-        districtRaw,
-        overlayFor("district_lantern_ward"),
-        "district_lantern_ward",
+        locale === "en" ? undefined : ptBrOverlaysById[district.id],
+        district.id,
         mergeBaseNodeTranslatable
       ),
-      poi: loadLocalizedContent(
-        PoiSchema,
-        BaseNodeTranslatableSchema,
-        poiRaw,
-        overlayFor("poi_crooked_hour_tavern"),
-        "poi_crooked_hour_tavern",
-        mergeBaseNodeTranslatable
-      ),
-      actor: loadLocalizedContent(
-        ActorSchema,
-        ActorTranslatableSchema,
-        actorRaw,
-        overlayFor("actor_mara_venn"),
-        "actor_mara_venn",
-        mergeActorTranslatable
-      ),
-      factionWageringRing: loadLocalizedContent(
-        FactionSchema,
-        BaseNodeTranslatableSchema,
-        factionWageringRingRaw,
-        overlayFor("faction_wagering_ring"),
-        "faction_wagering_ring",
-        mergeBaseNodeTranslatable
-      ),
-      dialogueMaraVenn: loadLocalizedContent(
-        DialogueSchema,
-        DialogueTranslatableSchema,
-        dialogueMaraVennRaw,
-        overlayFor("dialogue_mara_venn"),
-        "dialogue_mara_venn",
-        mergeDialogueTranslatable
-      ),
-    };
-  }, [locale]);
-
+    [locale]
+  );
   const localizedPois = useMemo(
-    () => pois.map((p) => (p.id === localized.poi.id ? localized.poi : p)),
-    [localized.poi]
+    () =>
+      pois.map((p) =>
+        applyLocaleOverlay(
+          p,
+          BaseNodeTranslatableSchema,
+          locale === "en" ? undefined : ptBrOverlaysById[p.id],
+          p.id,
+          mergeBaseNodeTranslatable
+        )
+      ),
+    [locale]
   );
   const localizedActors = useMemo(
-    () => actors.map((a) => (a.id === localized.actor.id ? localized.actor : a)),
-    [localized.actor]
+    () =>
+      actors.map((a) =>
+        applyLocaleOverlay(
+          a,
+          ActorTranslatableSchema,
+          locale === "en" ? undefined : ptBrOverlaysById[a.id],
+          a.id,
+          mergeActorTranslatable
+        )
+      ),
+    [locale]
   );
   const localizedFactions = useMemo(
-    () => factions.map((f) => (f.id === localized.factionWageringRing.id ? localized.factionWageringRing : f)),
-    [localized.factionWageringRing]
+    () =>
+      factions.map((f) =>
+        applyLocaleOverlay(
+          f,
+          BaseNodeTranslatableSchema,
+          locale === "en" ? undefined : ptBrOverlaysById[f.id],
+          f.id,
+          mergeBaseNodeTranslatable
+        )
+      ),
+    [locale]
+  );
+  const localizedItemList = useMemo(
+    () =>
+      itemList.map((item) =>
+        applyLocaleOverlay(
+          item,
+          BaseNodeTranslatableSchema,
+          locale === "en" ? undefined : ptBrOverlaysById[item.id],
+          item.id,
+          mergeBaseNodeTranslatable
+        )
+      ),
+    [locale]
+  );
+  const localizedEndeavors = useMemo(
+    () =>
+      endeavors.map((e) =>
+        applyLocaleOverlay(
+          e,
+          EndeavorTranslatableSchema,
+          locale === "en" ? undefined : ptBrOverlaysById[e.id],
+          e.id,
+          mergeEndeavorTranslatable
+        )
+      ),
+    [locale]
+  );
+  const localizedDialogueList = useMemo(
+    () =>
+      dialogueList.map((d) =>
+        applyLocaleOverlay(
+          d,
+          DialogueTranslatableSchema,
+          locale === "en" ? undefined : ptBrOverlaysById[d.id],
+          d.id,
+          mergeDialogueTranslatable
+        )
+      ),
+    [locale]
   );
   const localizedDialogues = useMemo(
-    () => ({ ...dialogues, [localized.dialogueMaraVenn.id]: localized.dialogueMaraVenn }),
-    [localized.dialogueMaraVenn]
+    () => Object.fromEntries(localizedDialogueList.map((d) => [d.id, d])),
+    [localizedDialogueList]
   );
   const localizedFactionsById = useMemo(
     () => Object.fromEntries(localizedFactions.map((f) => [f.id, f])),
@@ -291,6 +324,34 @@ function App() {
   const localizedFactionNames = useMemo(
     () => Object.fromEntries(localizedFactions.map((f) => [f.id, f.name])),
     [localizedFactions]
+  );
+  const localizedItemsById: Record<string, ItemDisplayData> = useMemo(
+    () =>
+      Object.fromEntries(
+        localizedItemList.map((item) => [
+          item.id,
+          { name: item.name, description: item.description, imageAsset: item.imageAsset },
+        ])
+      ),
+    [localizedItemList]
+  );
+  const localizedItemNames = useMemo(
+    () => Object.fromEntries(localizedItemList.map((item) => [item.id, item.name])),
+    [localizedItemList]
+  );
+  const localizedEndeavorTitles = useMemo(
+    () => Object.fromEntries(localizedEndeavors.map((e) => [e.id, e.title])),
+    [localizedEndeavors]
+  );
+  const localizedPhaseObjectives = useMemo(
+    () =>
+      Object.fromEntries(
+        localizedEndeavors.map((e) => [
+          e.id,
+          Object.fromEntries(Object.entries(e.phases).map(([phaseId, phase]) => [phaseId, phase.objectiveText])),
+        ])
+      ),
+    [localizedEndeavors]
   );
 
   const currentLocation = usePlayerStore((state) => state.currentLocation);
@@ -521,8 +582,8 @@ function App() {
         />
       ) : (
         <WorldNavigationView
-          settlementName={localized.settlement.name}
-          districtName={localized.district.name}
+          settlementName={localizedSettlement.name}
+          districtName={localizedDistrict.name}
           // BEHAVIOR FIX (not new scope): this previously read p.isUnlocked
           // directly, the static content default only — PlayerState.unlockedNodes
           // (written by COMMAND_UNLOCK_NODE / EndeavorPhase.unlocksNodesOnComplete)
@@ -550,10 +611,10 @@ function App() {
       <ManagementDrawer
         isOpen={isDrawerOpen}
         onClose={() => setDrawerOpen(false)}
-        endeavorTitles={endeavorTitles}
-        phaseObjectives={phaseObjectives}
+        endeavorTitles={localizedEndeavorTitles}
+        phaseObjectives={localizedPhaseObjectives}
         phaseIsTerminal={phaseIsTerminal}
-        items={itemsById}
+        items={localizedItemsById}
         roster={localizedRosterEntries}
       />
       <MinigameOverlay />
@@ -565,10 +626,10 @@ function App() {
       <NotificationTray
         notifications={notifications.map((event) =>
           resolveNotificationMessage(event, {
-            itemNames,
+            itemNames: localizedItemNames,
             actorNames: localizedActorNames,
             factionNames: localizedFactionNames,
-            endeavorTitles,
+            endeavorTitles: localizedEndeavorTitles,
             t,
           })
         )}

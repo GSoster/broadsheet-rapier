@@ -1,0 +1,18 @@
+{
+  "nodes": {
+    "node_terms_read": {
+      "speaker": "O Contador",
+      "text": "Ele desenrola uma tira de papel e a lê da forma como outro homem leria um manifesto de carga. \"Doze pratas, pendentes desde a Festa de Santa Ilona. Pelo próprio estatuto do Círculo, a dívida pode ser quitada em moeda, em espécie, ou\" — um olhar para o homem ao lado — \"em sangue, devidamente testemunhado.\"",
+      "choices": [
+        { "id": "choice_keep_watching", "text": "Continuar observando." }
+      ]
+    },
+    "node_terms_set": {
+      "speaker": "O Contador",
+      "text": "Ele bate duas vezes no papel, enrola-o, guarda-o. \"Registrado e testemunhado. O instrumento será quitado na Travessa do Vigarista, daqui a três dias, ao anoitecer. Os escrivães chamam de Instrumento de Resolução de Dívida, Registro Distrital 114.\" Uma pausa seca. \"Todo o resto chama de Beco das Viúvas. Até a violência passa por papelada nesta cidade.\"",
+      "choices": [
+        { "id": "choice_watch_face_fall", "text": "Observar o rosto do devedor cair." }
+      ]
+    }
+  }
+}

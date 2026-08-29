@@ -1,0 +1,33 @@
+{
+  "nodes": {
+    "node_first_offer": {
+      "text": "Ele agarra sua manga, baixo e rápido. \"Tome meu lugar. Por favor. O que quer que seja devido, eu pago em dobro, e tem uma espada nisso também, a própria de Vantry se você a ganhar dele, aço melhor do que qualquer coisa que eu poderia te pagar de outra forma.\"",
+      "choices": [
+        { "id": "choice_accept_swap_first", "text": "\"Lutarei em seu lugar.\"" },
+        { "id": "choice_decline_swap_first", "text": "\"Procure outra pessoa.\"" }
+      ]
+    },
+    "node_pressure": {
+      "speaker": "Narração",
+      "text": "A multidão notou a demora. Alguém lá atrás começa um aplauso lento e zombeteiro. Vantry não se moveu, mas agora está observando. O aperto de Anselm se aperta. \"Eles vieram ver o aço se mover, não esperar pela minha coragem. Por favor.\"",
+      "choices": [
+        { "id": "choice_accept_swap_second", "text": "\"Está bem. Eu faço isso.\"" },
+        { "id": "choice_decline_swap_second", "text": "\"Eu disse não.\"" }
+      ]
+    },
+    "node_no_way_out": {
+      "text": "Ele olha completamente por cima de Anselm, direto para você, e não há nada de hostil nisso, o que é pior. \"Você está no lugar onde o segundo dele fica. É esse o costume, todo ele. Não importa muito quem segura a espada, só que alguém o faça.\"",
+      "choices": [
+        { "id": "choice_grip_the_rapier", "text": "Segurar a espada." },
+        { "id": "choice_no_walking_away", "text": "Não há como recuar agora." }
+      ]
+    },
+    "node_pre_duel": {
+      "speaker": "Narração",
+      "text": "Anselm recua para a multidão. Vantry saca a espada.",
+      "choices": [
+        { "id": "choice_begin_duel", "text": "Começar o duelo." }
+      ]
+    }
+  }
+}

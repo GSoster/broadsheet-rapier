@@ -1,0 +1,12 @@
+{
+  "title": "O Panfleto Desaparecido",
+  "description": "A tiragem noturna da Gazeta ficou às escuras por duas noites seguidas, e seu impressor não é visto desde então. Panfletos não param de circular sozinhos — alguém pressionou ele, ou coisa pior, e as prensas desta cidade raramente ficam quietas por acidente.",
+  "phases": {
+    "phase_ask_around": {
+      "objectiveText": "Pergunte pelo Bairro do Lampião — taberneiros e seguranças ouvem coisas que impressores não contam à Guarda."
+    },
+    "phase_confront_the_buyer": {
+      "objectiveText": "Alguém pagou boa prata para manter aquela prensa silenciada. Descubra quem, e pergunte a ele pessoalmente por quê."
+    }
+  }
+}

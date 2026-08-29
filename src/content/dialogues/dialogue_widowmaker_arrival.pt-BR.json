@@ -1,0 +1,28 @@
+{
+  "nodes": {
+    "node_arrival": {
+      "speaker": "Narração",
+      "text": "O Beco das Viúvas é mais estreito do que sua reputação sugere. Lampiões foram amarrados entre as paredes, e um círculo frouxo de curiosos já reivindicou os melhores lugares. Duro Vantry fica à parte, alongando os ombros. Anselm não para de checar as saídas.",
+      "choices": [
+        {
+          "id": "choice_recognized_by_ring",
+          "text": "(Alguns na multidão acenam em sua direção.)"
+        },
+        {
+          "id": "choice_take_place",
+          "text": "Tomar seu lugar ao lado de Anselm."
+        }
+      ]
+    },
+    "node_friendly_crowd": {
+      "speaker": "Narração",
+      "text": "Alguém passa um frasco em sua direção sem ser pedido. Aconteça o que acontecer esta noite, você não é um estranho aqui.",
+      "choices": [
+        {
+          "id": "choice_take_place_friendly",
+          "text": "Tomar seu lugar ao lado de Anselm."
+        }
+      ]
+    }
+  }
+}

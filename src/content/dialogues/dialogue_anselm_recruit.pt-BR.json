@@ -1,0 +1,17 @@
+{
+  "nodes": {
+    "node_ask_second": {
+      "text": "\"Você viu aquilo. Doze pratas que não tenho, e agora uma espada que nunca segurei com convicção nenhuma.\" Ele quase não olha para você. \"Preciso de alguém ao meu lado na quinta-feira. Só para ficar ali. Você toparia?\"",
+      "choices": [
+        { "id": "choice_agree_to_stand", "text": "\"Ficarei ao seu lado.\"" },
+        { "id": "choice_decline_second", "text": "\"Essa não é a minha luta.\"" }
+      ]
+    },
+    "node_fee_offered": {
+      "text": "Alívio, mal escondido. \"Três pratas agora, aconteça o que acontecer na quinta. Você merece isso só pela companhia.\"",
+      "choices": [
+        { "id": "choice_accept_fee", "text": "\"Combinado.\"" }
+      ]
+    }
+  }
+}

@@ -1,0 +1,10 @@
+{
+  "nodes": {
+    "node_greeting": {
+      "text": "Ele te olha de cima a baixo, sem pressa, e nada mais. \"Nada a resolver entre nós. Ainda não, pelo menos.\"",
+      "choices": [
+        { "id": "choice_leave_vantry", "text": "Deixar por isso mesmo." }
+      ]
+    }
+  }
+}

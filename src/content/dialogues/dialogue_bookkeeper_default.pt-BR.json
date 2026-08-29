@@ -1,0 +1,11 @@
+{
+  "nodes": {
+    "node_greeting": {
+      "speaker": "O Contador",
+      "text": "Ele não levanta os olhos do livro-razão. \"Registrado e testemunhado. É tudo o que tenho a dizer sobre os assuntos de qualquer um, inclusive os seus.\"",
+      "choices": [
+        { "id": "choice_leave_bookkeeper", "text": "Deixe-o em paz." }
+      ]
+    }
+  }
+}

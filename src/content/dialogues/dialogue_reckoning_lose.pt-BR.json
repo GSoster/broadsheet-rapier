@@ -1,0 +1,10 @@
+{
+  "nodes": {
+    "node_defeat": {
+      "text": "Ele recua, satisfeito, limpando a lâmina. \"Dívida quitada do meu jeito, então.\" Ao seu redor, a multidão já está perdendo o interesse, seguindo para o que vier a seguir. Ninguém pagou para ver o segundo perder, pagaram para ver a dívida resolvida.",
+      "choices": [
+        { "id": "choice_leave_widowmaker", "text": "Deixar o beco." }
+      ]
+    }
+  }
+}

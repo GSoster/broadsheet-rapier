@@ -6,10 +6,12 @@ Let the player pick a display language (English, default; Português — Brasil,
 initially) from a dropdown, and have both the game's UI chrome (buttons,
 tooltips, HUD labels, the duel log) and any translated content (dialogue,
 actor/settlement/POI/faction/item names and descriptions, endeavor titles)
-render in that language. Translation coverage grows incrementally, file by
-file — this phase does not require every piece of content to be translated
-before the capability ships, and untranslated content falls back to English
-rather than erroring or showing blank text.
+render in that language. The mechanism itself never requires every piece of
+content to be translated before it ships — untranslated content falls back
+to English per-field rather than erroring or showing blank text — but as of
+this revision, every content file in the project (all 26: settlements,
+districts, POIs, actors, factions, endeavors, dialogues, items) actually has
+a `pt-BR` overlay, not just a proof-of-concept slice.
 
 ## Classification
 
@@ -53,13 +55,19 @@ exception, addressed directly:
 
 - **`App.tsx`, module scope**: alongside every existing `loadContent(Schema,
   xRaw, "label")` call, a parallel `import.meta.glob('../content/**/*.pt-BR.json',
-  { eager: true })` discovers whichever overlay files actually exist (most
-  won't, since only a vertical slice is translated this phase — see below).
-  Each canonical content instance is then resolved via `loadLocalizedContent`
-  instead of `loadContent` directly. Correct moment: this must happen at the
-  same module-scope load point the English content already loads at, so a
-  locale switch never needs to re-fetch or re-parse content — the merge is
-  keyed on the *current* locale reactively, not on load.
+  { eager: true })` discovers whichever overlay files actually exist —
+  currently every content file has one, but the mechanism itself makes no
+  assumption of that and degrades gracefully for any id without one.
+  **Genericized, not a hardcoded per-entity list**: every canonical array
+  (`pois`, `actors`, `factions`, `items`, `endeavors`, `dialogueList`, plus
+  `settlement`/`district` individually) is mapped through
+  `applyLocaleOverlay(canonical, overlaySchema, overlayRaw, label, merge)`
+  inside a `useMemo` keyed on `locale` — adding a new overlay file for any
+  existing id is picked up automatically, with no `App.tsx` code change.
+  Correct moment: this must happen at the same module-scope load point the
+  English content already loads at, so a locale switch never needs to
+  re-fetch content — only the (cheap) overlay merge recomputes, keyed on the
+  *current* locale reactively, not on load.
 - **`App.tsx`, one new `useEffect`**: keyed on `useLocaleStore`'s `locale`,
   calls `i18n.changeLanguage(locale)`. Correct moment: the same "store value
   changes → side effect fires" shape already used for `activeModifiers`
@@ -85,18 +93,29 @@ exception, addressed directly:
 dropdown is always visible (header/HUD-level, not buried in the Journal
 drawer), and every UI-chrome string this phase touches switches instantly.
 
-**Translated content**: reachable for exactly one vertical slice this
-phase — the starter settlement (Valdeombra), the Lantern Ward district, the
-Crooked Hour POI, Mara Venn (actor + her `faction_wagering_ring` faction),
-and her dialogue tree. From a fresh save (Reset Progress + reload), switching
-to Português (Brasil) and navigating to the Crooked Hour and talking to Mara
-Venn shows fully translated content; every other actor, POI, district,
-faction, item, and dialogue in the game falls back to English (not blank,
-not an error) because no overlay file exists for it yet. This mirrors this
-project's original Phase-0 "one inert vertical slice" precedent — translating
-the remaining ~20 content files is explicitly sequenced as separate follow-on
-content work (`docs/feature-workflow.md` §2 stage 4), not part of this
-engine-capability phase.
+**Translated content**: originally shipped for one vertical slice (the
+starter settlement, district, POI, Mara Venn, and her dialogue tree) as
+proof + reachability, with the remaining ~20 files sequenced as follow-on
+content work. That follow-on work has since landed in the same phase — every
+content file in the project now has a `pt-BR` overlay (settlements,
+districts, POIs, actors, factions, endeavors, dialogues, items). The
+per-field English fallback is still real and still load-bearing (a future
+new content file, or a third locale, lands with no overlay and degrades
+gracefully) — it's simply not currently exercised by anything already
+shipped, since nothing is untranslated anymore.
+
+**A real bug the full-content pass surfaced and fixed**: when only the
+vertical slice existed, `App.tsx`'s localization wiring was a hardcoded
+per-entity list (six named `loadLocalizedContent` calls). Authoring the
+remaining ~20 overlay files revealed that Endeavors and Items were never
+wired into that list at all — their overlay files validated correctly
+against `content-integrity.test.ts`, but nothing in `App.tsx` ever resolved
+them, so `endeavorTitles`/`phaseObjectives`/item names/descriptions stayed
+English regardless of locale. Fixed by generalizing the mechanism (see
+Integration points) — `applyLocaleOverlay` mapped generically over every
+content array — rather than extending the hardcoded list further. Caught by
+actually testing the newly-translated content in a real browser, not by
+inspection; see `docs/decisions.md`.
 
 **Verified via a real headless-browser pass against the dev server** (not
 just unit tests), confirming every claim above with actual output, not
@@ -125,6 +144,20 @@ assertion:
   and reopening the dialogue, proving the `useMemo`-keyed-on-`locale`
   content resolution is genuinely reactive, not memoized-once-per-mount.
 - Zero console errors across the entire pass.
+- **A second pass, after the full-content translation and the bug fix
+  above**, confirmed the fix against the previously-broken entities: the
+  Endeavors tab showed `Uma Dívida em Aço` / `O Panfleto Desaparecido`
+  (translated titles) with translated objective text; the Inventory tab
+  showed all five items fully translated (`Espada de Duelo`, `Espada de
+  Vantry`, `Espada do Duelista`, `Carta de Apresentação`, `Pingente da Moeda
+  Fácil`); Widowmaker Alley (`Beco das Viúvas`) and Duro Vantry (`O Segundo
+  do Círculo`) and his dialogue rendered correctly; and — the trickiest
+  case, since `actor_bookkeeper`'s `name` was itself translated (`The
+  Bookkeeper` → `O Contador`, a descriptive title rather than a proper
+  name) — every dialogue where that Actor speaks (`dialogue_bookkeeper_default`,
+  `dialogue_the_challenge`) has its `speaker` field translated to the exact
+  same string, confirmed by the portrait-matching speaker label rendering
+  correctly as `O CONTADOR` with no mismatch. Zero console errors.
 
 **A specific reachability case this architecture invites and must be
 checked explicitly**: switching locale while a dialogue is already open.
@@ -258,11 +291,11 @@ actual function App.tsx calls, not a hand-rolled equivalent.
   ahead of a real need would be premature, the same reasoning previously
   deferred hooks in this project's history (e.g. `onExit`) were declined
   under.
-- **Translating the remaining ~20 content files** (every actor/dialogue/
-  POI/district/faction/item beyond the one vertical slice) is explicitly
-  out of scope for this phase — sequenced as separate follow-on content
-  work, one file (or small batch) at a time, each incremental and
-  non-blocking since a missing overlay always falls back to English.
+- ~~Translating the remaining ~20 content files~~ — **done**, in the same
+  phase. Every content file in the project now has a `pt-BR` overlay. The
+  incremental, non-blocking mechanism (a missing overlay always falls back
+  to English) remains exactly as designed for whatever content is authored
+  next.
 - **`'en'` is the deliberate default, with no browser-language
   auto-detection.** Considered and rejected, not left as i18next's
   out-of-the-box behavior unconsidered: the brief explicitly names English
