@@ -85,6 +85,10 @@ Player progress must be persistable across sessions, and portable as an exportab
 
 Whenever the player's currency, inventory, or reputation with an Actor or Faction changes, or an Endeavor completes, they are shown a brief, transient on-screen acknowledgement — enough to notice at a glance, gone on its own after a few seconds, and dismissible early. This exists because none of those changes are otherwise guaranteed to be in the player's line of sight when they happen (a currency total sitting in a HUD corner, an inventory line inside a drawer the player hasn't opened). Not a persistent record — it carries no save-file weight and reflects nothing that survives a reload; it's purely a "something just happened" cue, not a log the player can review after the fact. (Concrete implementation is in `web-implementation.md`.)
 
+## 13. Localization
+
+The player may select a display language; English is the default, Português (Brasil) the first additional language, with more expected later. This is a net-new capability, not a previously-tracked Open Design Gap being resolved. The domain-level rule is only this: a player-facing language choice exists and English is always the fallback for anything not yet translated in another language — never blank, never an error. Everything else (how a translation is stored, how UI strings are looked up, which content has been translated so far) is a web-implementation concern, not a domain rule; see `web-implementation.md` §5b and `docs/features/feature_localization.md`.
+
 ---
 
 ## Open Design Gaps — Must Be Resolved Before Implementing Beyond the Technical Scaffold

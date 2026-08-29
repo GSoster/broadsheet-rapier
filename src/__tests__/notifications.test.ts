@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { diffForNotifications, formatCurrencyDelta } from "../engine/store/notifications";
+import { diffForNotifications } from "../engine/store/notifications";
 import { initialPlayerState } from "../engine/store/playerStore";
 import type { PlayerState } from "../engine/types";
 
@@ -95,20 +95,7 @@ describe("diffForNotifications", () => {
   });
 });
 
-describe("formatCurrencyDelta", () => {
-  it("formats a positive delta with a leading +", () => {
-    expect(formatCurrencyDelta(60)).toBe("+3 Silver");
-  });
-
-  it("formats a negative delta with a leading -, using the absolute magnitude", () => {
-    expect(formatCurrencyDelta(-60)).toBe("-3 Silver");
-  });
-
-  it("breaks a compound delta down across denominations", () => {
-    expect(formatCurrencyDelta(424)).toBe("+1 Gold, 1 Silver, 4 Bronze");
-  });
-
-  it("omits zero denominations from the breakdown", () => {
-    expect(formatCurrencyDelta(1)).toBe("+1 Bronze");
-  });
-});
+// formatCurrencyDelta moved to src/engine/i18n/formatCurrency.ts as part of
+// localization (docs/features/feature_localization.md) — now locale-aware,
+// tested in src/__tests__/formatCurrency.test.ts against real i18next
+// output rather than here.

@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { TriangleAlert } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { resolveAssetUrl } from "../utils/resolveAssetUrl";
 
 export interface AssetFallbackProps {
@@ -10,6 +11,7 @@ export interface AssetFallbackProps {
 }
 
 export function AssetFallback({ src, alt, kind = "image", className }: AssetFallbackProps) {
+  const { t } = useTranslation();
   const [failed, setFailed] = useState(false);
   const resolvedSrc = resolveAssetUrl(src);
 
@@ -19,7 +21,7 @@ export function AssetFallback({ src, alt, kind = "image", className }: AssetFall
         className={`flex flex-col items-center justify-center gap-1 border-2 border-purple-600 bg-purple-950/80 p-2 text-center text-xs text-purple-200 ${className ?? ""}`}
       >
         <TriangleAlert className="h-4 w-4" aria-hidden="true" />
-        <span>MISSING: {src}</span>
+        <span>{t("assetFallback.missing", { src })}</span>
       </div>
     );
   }

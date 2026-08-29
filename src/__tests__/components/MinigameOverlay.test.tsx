@@ -17,7 +17,7 @@ describe("MinigameOverlay", () => {
   // LOCKPICKING remains unimplemented, so these three exercise the generic
   // fallback shell — they used to use DUEL as their placeholder type before
   // DUEL got a real mechanic and its own overlay branch.
-  it("renders the overlay with the active minigame's type once one is active", () => {
+  it("renders the overlay with the active minigame's translated type label once one is active", () => {
     usePlayerStore.setState({
       activeMinigame: {
         type: "LOCKPICKING",
@@ -28,7 +28,10 @@ describe("MinigameOverlay", () => {
       },
     });
     render(<MinigameOverlay />);
-    expect(screen.getByText("LOCKPICKING")).toBeInTheDocument();
+    // Rendered via t('enums.minigameType.LOCKPICKING'), not the raw enum
+    // value — docs/features/feature_localization.md: only the label
+    // localizes, never the underlying MinigameType identifier itself.
+    expect(screen.getByText("Lockpicking")).toBeInTheDocument();
   });
 
   it("dispatches COMMAND_RESOLVE_MINIGAME with isVictory true and clears activeMinigame on victory", () => {

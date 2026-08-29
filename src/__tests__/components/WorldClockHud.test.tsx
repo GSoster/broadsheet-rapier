@@ -16,12 +16,15 @@ describe("WorldClockHud", () => {
     });
     render(<WorldClockHud />);
     expect(screen.getByText("Day 3")).toBeInTheDocument();
-    expect(screen.getByText("AFTERNOON")).toBeInTheDocument();
-    expect(screen.getByText("AUTUMN")).toBeInTheDocument();
-    expect(screen.getByText("RAIN")).toBeInTheDocument();
-    expect(screen.getByText("2g")).toBeInTheDocument();
-    expect(screen.getByText("5s")).toBeInTheDocument();
-    expect(screen.getByText("10b")).toBeInTheDocument();
+    // Rendered via t('worldClock.shift.AFTERNOON') etc, not the raw enum
+    // value — docs/features/feature_localization.md: only the label
+    // localizes, never the underlying Shift/Season/Weather identifier.
+    expect(screen.getByText("Afternoon")).toBeInTheDocument();
+    expect(screen.getByText("Autumn")).toBeInTheDocument();
+    expect(screen.getByText("Rain")).toBeInTheDocument();
+    // Currency formatting unified into formatCurrencyAbbreviated — one
+    // combined string, not three separate spans.
+    expect(screen.getByText("2g 5s 10b")).toBeInTheDocument();
   });
 
   it("dispatches COMMAND_ADVANCE_SHIFT when the Advance Shift button is clicked", () => {

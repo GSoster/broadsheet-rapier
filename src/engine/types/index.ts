@@ -45,6 +45,14 @@ export type Season = (typeof SEASONS)[number];
 export const WEATHERS = ["CLEAR", "RAIN", "FOG", "STORM"] as const;
 export type Weather = (typeof WEATHERS)[number];
 
+// Shared engine/content vocabulary for localization — content schemas
+// (the *TranslatableSchema fragments) and engine code (i18next init,
+// useLocaleStore) both need this without a circular import, same treatment
+// as SHIFTS/MODIFIER_KEYS. 'en' is first/default; order otherwise
+// unimportant. See docs/features/feature_localization.md.
+export const LOCALES = ["en", "pt-BR"] as const;
+export type Locale = (typeof LOCALES)[number];
+
 // DistanceState is re-exported from the duel resolver (its natural home,
 // mirroring dice.ts owning its own types) rather than duplicated here.
 export type { DistanceState };

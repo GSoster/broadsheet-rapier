@@ -1,3 +1,5 @@
+import { useTranslation } from "react-i18next";
+
 export interface WorldNavigationPoi {
   id: string;
   name: string;
@@ -17,6 +19,7 @@ export function WorldNavigationView({
   pois,
   onSelectPoi,
 }: WorldNavigationViewProps) {
+  const { t } = useTranslation();
   return (
     <section className="flex flex-col gap-4 p-6">
       <div>
@@ -32,7 +35,7 @@ export function WorldNavigationView({
             onClick={() => onSelectPoi(poi.id)}
             className="rounded border border-indigo-800 bg-neutral-900 p-4 text-left text-sm text-indigo-100 disabled:cursor-not-allowed disabled:opacity-40 enabled:hover:border-indigo-500"
           >
-            {poi.isUnlocked ? poi.name : "??? (locked)"}
+            {poi.isUnlocked ? poi.name : t("common.locked")}
           </button>
         ))}
       </div>

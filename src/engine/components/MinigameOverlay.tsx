@@ -1,8 +1,10 @@
+import { useTranslation } from "react-i18next";
 import { usePlayerStore } from "../store/playerStore";
 import { DiceGame } from "./minigames/DiceGame";
 import { DuelGame } from "./minigames/DuelGame";
 
 export function MinigameOverlay() {
+  const { t } = useTranslation();
   const activeMinigame = usePlayerStore((state) => state.activeMinigame);
   const dispatchCommand = usePlayerStore((state) => state.dispatchCommand);
 
@@ -18,11 +20,10 @@ export function MinigameOverlay() {
         <DuelGame sourceId={activeMinigame.sourceId} />
       ) : (
         <div className="flex w-full max-w-md flex-col gap-4 rounded border border-indigo-800 bg-neutral-950 p-6 text-indigo-100">
-          <p className="text-xs uppercase tracking-wide text-indigo-400">{activeMinigame.type}</p>
-          <p className="text-sm text-indigo-300">
-            Minigame mechanics aren&apos;t specified yet (see the open design gaps in
-            game-design-spec.md) — this is the dispatch plumbing only.
+          <p className="text-xs uppercase tracking-wide text-indigo-400">
+            {t(`enums.minigameType.${activeMinigame.type}`)}
           </p>
+          <p className="text-sm text-indigo-300">{t("minigameOverlay.placeholderNote")}</p>
           <div className="flex justify-end gap-3">
             <button
               type="button"
@@ -31,7 +32,7 @@ export function MinigameOverlay() {
               }
               className="rounded border border-red-800 bg-red-950/60 px-3 py-1 text-xs uppercase tracking-wide hover:bg-red-900/60"
             >
-              Resolve as Defeat
+              {t("minigameOverlay.resolveDefeat")}
             </button>
             <button
               type="button"
@@ -40,7 +41,7 @@ export function MinigameOverlay() {
               }
               className="rounded border border-emerald-800 bg-emerald-950/60 px-3 py-1 text-xs uppercase tracking-wide hover:bg-emerald-900/60"
             >
-              Resolve as Victory
+              {t("minigameOverlay.resolveVictory")}
             </button>
           </div>
         </div>

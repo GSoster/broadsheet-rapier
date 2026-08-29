@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
+import { useTranslation } from "react-i18next";
 import { usePlayerStore } from "../store/playerStore";
 import { AssetFallback } from "./AssetFallback";
 import { SEASONS, SHIFTS, WEATHERS } from "../types";
@@ -37,13 +38,6 @@ export interface RosterEntryData {
 
 type ManagementTab = "CASE_BOARD" | "ENDEAVORS" | "INVENTORY" | "ROSTER";
 
-const TABS: Array<{ id: ManagementTab; label: string }> = [
-  { id: "CASE_BOARD", label: "Case Board" },
-  { id: "ENDEAVORS", label: "Endeavors" },
-  { id: "INVENTORY", label: "Inventory" },
-  { id: "ROSTER", label: "Roster" },
-];
-
 export interface ManagementDrawerProps {
   isOpen: boolean;
   onClose: () => void;
@@ -73,6 +67,13 @@ export function ManagementDrawer({
   items,
   roster,
 }: ManagementDrawerProps) {
+  const { t } = useTranslation();
+  const TABS: Array<{ id: ManagementTab; label: string }> = [
+    { id: "CASE_BOARD", label: t("managementDrawer.tabs.caseBoard") },
+    { id: "ENDEAVORS", label: t("managementDrawer.tabs.endeavors") },
+    { id: "INVENTORY", label: t("managementDrawer.tabs.inventory") },
+    { id: "ROSTER", label: t("managementDrawer.tabs.roster") },
+  ];
   const [tab, setTab] = useState<ManagementTab>("CASE_BOARD");
   const [isConfirmingReset, setConfirmingReset] = useState(false);
   const unlockedClues = usePlayerStore((state) => state.unlockedClues);
@@ -103,9 +104,9 @@ export function ManagementDrawer({
           className="fixed inset-y-0 right-0 z-50 flex w-[30rem] flex-col border-l border-indigo-900 bg-neutral-950 text-indigo-100"
         >
           <div className="flex items-center justify-between border-b border-indigo-900 px-4 py-3">
-            <h2 className="text-sm font-semibold uppercase tracking-wide">Journal</h2>
+            <h2 className="text-sm font-semibold uppercase tracking-wide">{t("common.journal")}</h2>
             <button type="button" onClick={onClose} className="text-indigo-400 hover:text-indigo-100">
-              Close
+              {t("common.close")}
             </button>
           </div>
           <nav className="flex border-b border-indigo-900 text-xs">
@@ -131,7 +132,7 @@ export function ManagementDrawer({
                   ))}
                 </ul>
               ) : (
-                <p className="text-indigo-400">No clues gathered yet.</p>
+                <p className="text-indigo-400">{t("managementDrawer.noClues")}</p>
               )
             ) : null}
             {tab === "ENDEAVORS" ? (
@@ -149,11 +150,11 @@ export function ManagementDrawer({
                       ))}
                     </ul>
                   ) : (
-                    <p className="text-indigo-400">No active endeavors right now.</p>
+                    <p className="text-indigo-400">{t("managementDrawer.noActiveEndeavors")}</p>
                   )}
                   {completedEndeavors.length ? (
                     <div className="border-t border-indigo-900 pt-3">
-                      <p className="mb-2 text-xs uppercase tracking-wide text-indigo-500">Completed</p>
+                      <p className="mb-2 text-xs uppercase tracking-wide text-indigo-500">{t("managementDrawer.completed")}</p>
                       <ul className="flex flex-col gap-3 opacity-60">
                         {completedEndeavors.map(([endeavorId, endeavor]) => (
                           <li key={endeavorId}>
@@ -168,7 +169,7 @@ export function ManagementDrawer({
                   ) : null}
                 </div>
               ) : (
-                <p className="text-indigo-400">No active endeavors.</p>
+                <p className="text-indigo-400">{t("managementDrawer.noActiveEndeavorsShort")}</p>
               )
             ) : null}
             {tab === "INVENTORY" ? (
@@ -202,7 +203,7 @@ export function ManagementDrawer({
                   })}
                 </ul>
               ) : (
-                <p className="text-indigo-400">Empty.</p>
+                <p className="text-indigo-400">{t("managementDrawer.empty")}</p>
               )
             ) : null}
             {tab === "ROSTER" ? (
@@ -229,7 +230,7 @@ export function ManagementDrawer({
                   ))}
                 </ul>
               ) : (
-                <p className="text-indigo-400">You haven&apos;t met anyone yet.</p>
+                <p className="text-indigo-400">{t("managementDrawer.noRoster")}</p>
               )
             ) : null}
           </div>

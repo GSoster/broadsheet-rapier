@@ -4,9 +4,11 @@ import { DistrictSchema } from "../content/schemas/district.schema";
 import { PoiSchema } from "../content/schemas/poi.schema";
 import { ActorSchema } from "../content/schemas/actor.schema";
 import { FactionSchema } from "../content/schemas/faction.schema";
-import { EndeavorSchema } from "../content/schemas/endeavor.schema";
-import { DialogueSchema } from "../content/schemas/dialogue.schema";
+import { EndeavorSchema, EndeavorTranslatableSchema } from "../content/schemas/endeavor.schema";
+import { DialogueSchema, DialogueTranslatableSchema } from "../content/schemas/dialogue.schema";
 import { ItemSchema } from "../content/schemas/item.schema";
+import { BaseNodeTranslatableSchema } from "../content/schemas/shared";
+import { ActorTranslatableSchema } from "../content/schemas/actor.schema";
 
 import validSettlement from "../content/settlements/settlement_valdeombra_city.json";
 import validDistrict from "../content/districts/district_lantern_ward.json";
@@ -16,6 +18,8 @@ import validFaction from "../content/factions/faction_city_watch.json";
 import validEndeavor from "../content/endeavors/endeavor_the_missing_broadsheet.json";
 import validDialogue from "../content/dialogues/dialogue_mara_venn.json";
 import validItem from "../content/items/item_rapier.json";
+import validActorOverlay from "../content/actors/actor_mara_venn.pt-BR.json";
+import validDialogueOverlay from "../content/dialogues/dialogue_mara_venn.pt-BR.json";
 
 describe("SettlementSchema", () => {
   it("accepts the starter settlement fixture", () => {
@@ -247,5 +251,79 @@ describe("ItemSchema", () => {
     const invalid: Record<string, unknown> = { ...validItem };
     delete invalid.stackable;
     expect(ItemSchema.safeParse(invalid).success).toBe(false);
+  });
+});
+
+// Locale overlay schemas — docs/features/feature_localization.md. Every
+// field optional (a translation can cover a subset); .strict() rejects an
+// unknown/typo'd field rather than silently accepting it.
+describe("BaseNodeTranslatableSchema", () => {
+  it("accepts an empty overlay (every field omitted)", () => {
+    expect(BaseNodeTranslatableSchema.safeParse({}).success).toBe(true);
+  });
+
+  it("accepts name/description only", () => {
+    expect(BaseNodeTranslatableSchema.safeParse({ name: "A Hora Torta", description: "Uma taverna." }).success).toBe(true);
+  });
+
+  it("rejects an unknown field (.strict())", () => {
+    expect(BaseNodeTranslatableSchema.safeParse({ name: "x", isUnlocked: true }).success).toBe(false);
+  });
+
+  it("rejects a non-string name", () => {
+    expect(BaseNodeTranslatableSchema.safeParse({ name: 5 }).success).toBe(false);
+  });
+});
+
+describe("ActorTranslatableSchema", () => {
+  it("accepts the real actor_mara_venn.pt-BR.json overlay fixture", () => {
+    expect(ActorTranslatableSchema.safeParse(validActorOverlay).success).toBe(true);
+  });
+
+  it("accepts title alone, with name/description omitted", () => {
+    expect(ActorTranslatableSchema.safeParse({ title: "Frequentadora do Círculo das Apostas" }).success).toBe(true);
+  });
+
+  it("rejects an unknown field", () => {
+    expect(ActorTranslatableSchema.safeParse({ title: "x", poiId: "poi_x" }).success).toBe(false);
+  });
+});
+
+describe("EndeavorTranslatableSchema", () => {
+  it("accepts an empty overlay", () => {
+    expect(EndeavorTranslatableSchema.safeParse({}).success).toBe(true);
+  });
+
+  it("accepts a phases map keyed by phase id, objectiveText only", () => {
+    expect(
+      EndeavorTranslatableSchema.safeParse({ phases: { phase_ask_around: { objectiveText: "Pergunte pela cidade." } } })
+        .success
+    ).toBe(true);
+  });
+
+  it("rejects an unknown field inside a phase entry", () => {
+    expect(
+      EndeavorTranslatableSchema.safeParse({ phases: { phase_ask_around: { unlocksNodesOnComplete: [] } } }).success
+    ).toBe(false);
+  });
+});
+
+describe("DialogueTranslatableSchema", () => {
+  it("accepts the real dialogue_mara_venn.pt-BR.json overlay fixture", () => {
+    expect(DialogueTranslatableSchema.safeParse(validDialogueOverlay).success).toBe(true);
+  });
+
+  it("accepts a node with only some choices listed, matched by id", () => {
+    const overlay = { nodes: { node_x: { text: "Olá.", choices: [{ id: "choice_a", text: "Sim." }] } } };
+    expect(DialogueTranslatableSchema.safeParse(overlay).success).toBe(true);
+  });
+
+  it("rejects a choice overlay missing its id (the merge key)", () => {
+    const overlay = { nodes: { node_x: { choices: [{ text: "Sim." }] } } };
+    expect(DialogueTranslatableSchema.safeParse(overlay).success).toBe(false);
+  });
+
+  it("rejects an unknown top-level field", () => {
+    expect(DialogueTranslatableSchema.safeParse({ startNodeId: "node_x" }).success).toBe(false);
   });
 });

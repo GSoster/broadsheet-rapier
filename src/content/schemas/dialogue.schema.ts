@@ -39,3 +39,31 @@ export const DialogueSchema = z.object({
   nodes: z.record(z.string(), DialogueNodeSchema),
 });
 export type Dialogue = z.infer<typeof DialogueSchema>;
+
+// Overlay schema for a locale translation of a Dialogue — per node, only
+// speaker/text; per choice, only text. Choices stay an id-keyed ARRAY
+// (mirroring DialogueNodeSchema's own shape, not a Record) so a translator's
+// overlay file visually mirrors the canonical English file for easy
+// diffing; the merge in contentLocalization.ts matches choices by `id`, not
+// array position. See docs/features/feature_localization.md.
+export const DialogueTranslatableChoiceSchema = z
+  .object({
+    id: z.string(),
+    text: z.string().optional(),
+  })
+  .strict();
+
+export const DialogueTranslatableNodeSchema = z
+  .object({
+    speaker: z.string().optional(),
+    text: z.string().optional(),
+    choices: z.array(DialogueTranslatableChoiceSchema).optional(),
+  })
+  .strict();
+
+export const DialogueTranslatableSchema = z
+  .object({
+    nodes: z.record(z.string(), DialogueTranslatableNodeSchema).optional(),
+  })
+  .strict();
+export type DialogueTranslatable = z.infer<typeof DialogueTranslatableSchema>;

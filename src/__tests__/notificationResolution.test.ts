@@ -1,12 +1,14 @@
 import { describe, expect, it } from "vitest";
 import { resolveNotificationMessage } from "../notificationResolution";
 import type { NotificationEvent } from "../engine/store/notifications";
+import i18n from "../engine/i18n";
 
 const ctx = {
   itemNames: { item_vantry_rapier: "Vantry's Rapier" },
   actorNames: { actor_mara_venn: "Mara Venn" },
   factionNames: { faction_wagering_ring: "The Wagering Ring" },
   endeavorTitles: { endeavor_a_debt_in_steel: "A Debt in Steel" },
+  t: i18n.getFixedT("en"),
 };
 
 function event(overrides: Partial<NotificationEvent> & Pick<NotificationEvent, "kind">): NotificationEvent {
@@ -16,7 +18,7 @@ function event(overrides: Partial<NotificationEvent> & Pick<NotificationEvent, "
 describe("resolveNotificationMessage", () => {
   it("formats a CURRENCY event via formatCurrencyDelta", () => {
     const result = resolveNotificationMessage(event({ kind: "CURRENCY", deltaBronze: 60 }), ctx);
-    expect(result).toEqual({ id: "n1", tone: "gain", message: "+3 Silver" });
+    expect(result).toEqual({ id: "n1", tone: "gain", message: "+3 Silver Coins" });
   });
 
   it("resolves an ITEM event's name via itemNames, with a signed quantity", () => {

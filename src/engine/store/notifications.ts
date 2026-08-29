@@ -1,5 +1,5 @@
 import type { PlayerState } from "../types";
-import { bronzeEquivalentToCurrencies, currenciesToBronzeEquivalent } from "./commands";
+import { currenciesToBronzeEquivalent } from "./commands";
 
 export type NotificationTone = "gain" | "loss" | "info";
 
@@ -79,21 +79,6 @@ function diffReputation(before: PlayerState, after: PlayerState): RawNotificatio
 // docs/features/feature_notification_system.md's Design section.
 export function diffForNotifications(before: PlayerState, after: PlayerState): RawNotificationEvent[] {
   return [...diffCurrency(before, after), ...diffItems(before, after), ...diffReputation(before, after)];
-}
-
-// Content-free formatting (gold/silver/bronze are just words, no lookup
-// needed) — reuses commands.ts's own bronze<->denomination conversion
-// rather than re-deriving the 20/400 ratio here. Works on a signed delta
-// (bronzeEquivalentToCurrencies itself clamps negative to 0, so the sign is
-// handled separately and the magnitude is converted on its own).
-export function formatCurrencyDelta(deltaBronze: number): string {
-  const sign = deltaBronze > 0 ? "+" : "-";
-  const breakdown = bronzeEquivalentToCurrencies(Math.abs(deltaBronze));
-  const parts: string[] = [];
-  if (breakdown.gold > 0) parts.push(`${breakdown.gold} Gold`);
-  if (breakdown.silver > 0) parts.push(`${breakdown.silver} Silver`);
-  if (breakdown.bronze > 0) parts.push(`${breakdown.bronze} Bronze`);
-  return `${sign}${parts.join(", ")}`;
 }
 
 let notificationIdCounter = 0;

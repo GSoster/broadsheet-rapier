@@ -1,9 +1,11 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
+import { useTranslation } from "react-i18next";
+import type { TFunction } from "i18next";
 import { usePlayerStore } from "../../store/playerStore";
 import { minigameResolvers } from "../../minigames";
 import {
-  ACTION_LABELS,
+  getActionLabels,
   chooseOpponentAction,
   PLAYER_STARTING_ENERGY,
   PLAYER_STARTING_POISE,
@@ -22,27 +24,10 @@ const LOSE_SOUND_ASSET = "/content/assets/audio/duel_lose.mp3";
 
 const RESOLVE_DELAY_MS = 500;
 
-// Button order — labels come from the shared ACTION_LABELS map (duel.ts) so
-// the buttons and the duel log never drift into two different names for the
-// same action.
+// Button order — labels come from getActionLabels (duel.ts) so the buttons
+// and the duel log never drift into two different names for the same
+// action, and both stay in whatever the current locale is.
 const ACTIONS: DuelAction[] = ["THRUST", "PARRY_RIPOSTE", "FEINT", "TAUNT", "DIRTY_TRICK"];
-
-// Player-facing explanations, kept here rather than in duel.ts: ACTION_LABELS
-// is short display text the log itself renders (engine-adjacent), this is
-// longer descriptive copy only ever shown in a UI tooltip.
-const ACTION_DESCRIPTIONS: Record<DuelAction, string> = {
-  THRUST: "A direct strike — only works In Measure. Deals energy damage, more if the opponent's guard is already broken. Parried, it costs you energy instead.",
-  PARRY_RIPOSTE: "Holds your guard. Blocks and counters an incoming Thrust or Dirty Trick for energy damage. Does nothing if the opponent doesn't attack.",
-  FEINT: "Drains the opponent's poise and closes the distance one step. Safe to use at any range.",
-  TAUNT: "Drains the opponent's poise from any range — more if your standing with the Wagering Ring is high enough.",
-  DIRTY_TRICK: "An underhanded strike — only works at Close Quarters. Deals energy damage and extra poise drain, more if the opponent's guard is already broken.",
-};
-
-const DISTANCE_DESCRIPTIONS: Record<DistanceState, string> = {
-  OUT_OF_MEASURE: "Too far apart for Thrust or Dirty Trick. Feint to close the distance.",
-  IN_MEASURE: "Close enough for Thrust. Still too far for a Dirty Trick — Feint again to reach Close Quarters.",
-  CLOSE_QUARTERS: "Close enough for a Dirty Trick. Too close for Thrust to connect.",
-};
 
 // Actions where the PLAYER deals damage to the opponent — the exact set
 // wired to DUEL_DAMAGE_DEALT in duel.ts (THRUST/DIRTY_TRICK's own hit, and a
@@ -52,46 +37,39 @@ const DAMAGE_DEALING_ACTIONS: ReadonlySet<DuelAction> = new Set(["THRUST", "DIRT
 // Stage 3 of the modifier rollout (docs/features/feature_modifier_system.md
 // §2.9): surfaces active DUEL_DAMAGE_DEALT modifiers in the action tooltip,
 // rather than leaving an equipped-feeling bonus invisible to the player.
-function describeDamageModifiers(modifiers: ModifierSet): string {
+function describeDamageModifiers(modifiers: ModifierSet, t: TFunction): string {
   const matching = selectModifiers(modifiers, "DUEL_DAMAGE_DEALT");
   if (matching.length === 0) return "";
   const parts = matching.map((m) => {
     const magnitude = m.op === "FLAT" ? `${m.value >= 0 ? "+" : ""}${m.value}` : `${m.value >= 0 ? "+" : ""}${Math.round(m.value * 100)}%`;
-    return `${magnitude} from ${m.sourceLabel}`;
+    return t("duel.damageBonusPart", { magnitude, sourceLabel: m.sourceLabel });
   });
-  return ` Damage bonus: ${parts.join(", ")}.`;
+  return t("duel.damageBonus", { parts: parts.join(", ") });
 }
 
-function describeAction(action: DuelAction, modifiers: ModifierSet): string {
-  const base = ACTION_DESCRIPTIONS[action];
-  return DAMAGE_DEALING_ACTIONS.has(action) ? base + describeDamageModifiers(modifiers) : base;
+function describeAction(
+  action: DuelAction,
+  descriptions: Record<DuelAction, string>,
+  modifiers: ModifierSet,
+  t: TFunction
+): string {
+  const base = descriptions[action];
+  return DAMAGE_DEALING_ACTIONS.has(action) ? base + describeDamageModifiers(modifiers, t) : base;
 }
-
-const ENERGY_DESCRIPTION = "Health for this duel. Reaches 0 and that side loses.";
-const POISE_DESCRIPTION =
-  "Guard. Once it reaches 0, the next Thrust or Dirty Trick that lands against that side deals bonus damage.";
 
 function escapeRegExp(value: string): string {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
-// Longest-first so "Parry & Riposte" matches whole, not a partial overlap
-// with a shorter label — not actually reachable with today's five labels
-// (none is a substring of another), but cheap insurance against it becoming
-// true if a future action's label is.
-const ACTION_LABEL_PATTERN = new RegExp(
-  `(${Object.values(ACTION_LABELS)
-    .sort((a, b) => b.length - a.length)
-    .map(escapeRegExp)
-    .join("|")})`,
-  "g"
-);
-
 // Bolds any duel-action name appearing in a log line (e.g. "Your Thrust
 // lands for 15 energy.") without duel.ts needing to know anything about
-// presentation — it only ever emits plain strings.
-function renderLogEntry(entry: string): Array<string | { bold: string }> {
-  return entry.split(ACTION_LABEL_PATTERN).map((part) => (Object.values(ACTION_LABELS).includes(part) ? { bold: part } : part));
+// presentation — it only ever emits plain, already-translated strings.
+// Longest-first so a longer label matches whole, not a partial overlap with
+// a shorter one.
+function renderLogEntry(entry: string, actionLabels: Record<DuelAction, string>): Array<string | { bold: string }> {
+  const labelValues = Object.values(actionLabels);
+  const pattern = new RegExp(`(${[...labelValues].sort((a, b) => b.length - a.length).map(escapeRegExp).join("|")})`, "g");
+  return entry.split(pattern).map((part) => (labelValues.includes(part) ? { bold: part } : part));
 }
 
 function isActionLegal(action: DuelAction, distance: DistanceState): boolean {
@@ -109,10 +87,32 @@ export interface DuelGameProps {
 }
 
 export function DuelGame({ random, playSound: playSoundProp = playSound }: DuelGameProps) {
+  const { t } = useTranslation();
   const reputation = usePlayerStore((state) => state.reputation);
   const activeModifiers = usePlayerStore((state) => state.activeModifiers);
   const activeMinigame = usePlayerStore((state) => state.activeMinigame);
   const dispatchCommand = usePlayerStore((state) => state.dispatchCommand);
+
+  const actionLabels = getActionLabels(t);
+  const actionDescriptions: Record<DuelAction, string> = {
+    THRUST: t("duel.descriptions.THRUST"),
+    PARRY_RIPOSTE: t("duel.descriptions.PARRY_RIPOSTE"),
+    FEINT: t("duel.descriptions.FEINT"),
+    TAUNT: t("duel.descriptions.TAUNT"),
+    DIRTY_TRICK: t("duel.descriptions.DIRTY_TRICK"),
+  };
+  const distanceDescriptions: Record<DistanceState, string> = {
+    OUT_OF_MEASURE: t("duel.distanceDescriptions.OUT_OF_MEASURE"),
+    IN_MEASURE: t("duel.distanceDescriptions.IN_MEASURE"),
+    CLOSE_QUARTERS: t("duel.distanceDescriptions.CLOSE_QUARTERS"),
+  };
+  const distanceLabels: Record<DistanceState, string> = {
+    OUT_OF_MEASURE: t("duel.distanceLabel.OUT_OF_MEASURE"),
+    IN_MEASURE: t("duel.distanceLabel.IN_MEASURE"),
+    CLOSE_QUARTERS: t("duel.distanceLabel.CLOSE_QUARTERS"),
+  };
+  const energyDescription = t("duel.energyDescription");
+  const poiseDescription = t("duel.poiseDescription");
 
   const config = activeMinigame?.type === "DUEL" ? activeMinigame.config : undefined;
 
@@ -130,7 +130,7 @@ export function DuelGame({ random, playSound: playSoundProp = playSound }: DuelG
   const [log, setLog] = useState<string[]>([]);
   const [outcome, setOutcome] = useState<DuelOutcome>("ONGOING");
 
-  const opponentName = config?.opponentName ?? "Opponent";
+  const opponentName = config?.opponentName ?? t("duel.opponentFallback");
   // Default true — every DUEL authored before this field existed keeps
   // Fleeing available; a story-critical duel with no way back in once fled
   // authors this false instead (see DuelConfig's comment, docs/decisions.md).
@@ -149,7 +149,7 @@ export function DuelGame({ random, playSound: playSoundProp = playSound }: DuelG
         modifiers: activeModifiers,
       };
       const opponentAction = chooseOpponentAction(context, random);
-      const result = minigameResolvers.DUEL(context, playerAction, opponentAction);
+      const result = minigameResolvers.DUEL(context, playerAction, opponentAction, t);
 
       setPlayer(result.player);
       setOpponent(result.opponent);
@@ -180,51 +180,55 @@ export function DuelGame({ random, playSound: playSoundProp = playSound }: DuelG
 
   return (
     <div className="flex w-full max-w-lg flex-col gap-4 rounded-lg border-4 border-stone-700 bg-gradient-to-b from-stone-800 to-stone-950 p-6 shadow-xl">
-      <p className="text-xs uppercase tracking-wide text-stone-300">Rapier Duel — {opponentName}</p>
+      <p className="text-xs uppercase tracking-wide text-stone-300">{t("duel.header", { opponentName })}</p>
 
       <div className="flex justify-between gap-4">
         <div className="flex-1 text-sm text-stone-200">
-          <p>You</p>
+          <p>{t("duel.you")}</p>
           <p>
-            Energy: {player.energy}{" "}
-            <Tooltip label={ENERGY_DESCRIPTION}>
-              <span aria-label="What is Energy?" className="cursor-help text-stone-500">
+            {t("duel.energyLabel")}
+            {player.energy}{" "}
+            <Tooltip label={energyDescription}>
+              <span aria-label={t("duel.energyAria")} className="cursor-help text-stone-500">
                 (?)
               </span>
             </Tooltip>
           </p>
           <p>
-            Poise: {player.poise}{" "}
-            <Tooltip label={POISE_DESCRIPTION}>
-              <span aria-label="What is Poise?" className="cursor-help text-stone-500">
+            {t("duel.poiseLabel")}
+            {player.poise}{" "}
+            <Tooltip label={poiseDescription}>
+              <span aria-label={t("duel.poiseAria")} className="cursor-help text-stone-500">
                 (?)
               </span>
             </Tooltip>
           </p>
         </div>
-        <Tooltip label={DISTANCE_DESCRIPTIONS[distance]} className="flex-none">
+        <Tooltip label={distanceDescriptions[distance]} className="flex-none">
           <motion.div
             animate={phase === "resolving" ? { scale: [1, 1.1, 1] } : { scale: 1 }}
             transition={{ duration: RESOLVE_DELAY_MS / 1000, ease: "easeInOut" }}
             className="flex cursor-help items-center text-xs uppercase tracking-wide text-stone-400"
           >
-            {distance.replace(/_/g, " ")}
+            {distanceLabels[distance]}
           </motion.div>
         </Tooltip>
         <div className="flex-1 text-right text-sm text-stone-200">
           <p>{opponentName}</p>
           <p>
-            Energy: {opponent.energy}{" "}
-            <Tooltip label={ENERGY_DESCRIPTION}>
-              <span aria-label="What is Energy?" className="cursor-help text-stone-500">
+            {t("duel.energyLabel")}
+            {opponent.energy}{" "}
+            <Tooltip label={energyDescription}>
+              <span aria-label={t("duel.energyAria")} className="cursor-help text-stone-500">
                 (?)
               </span>
             </Tooltip>
           </p>
           <p>
-            Poise: {opponent.poise}{" "}
-            <Tooltip label={POISE_DESCRIPTION}>
-              <span aria-label="What is Poise?" className="cursor-help text-stone-500">
+            {t("duel.poiseLabel")}
+            {opponent.poise}{" "}
+            <Tooltip label={poiseDescription}>
+              <span aria-label={t("duel.poiseAria")} className="cursor-help text-stone-500">
                 (?)
               </span>
             </Tooltip>
@@ -234,11 +238,11 @@ export function DuelGame({ random, playSound: playSoundProp = playSound }: DuelG
 
       <div className="h-24 overflow-y-auto rounded border border-stone-700 bg-stone-900/60 p-2 text-xs text-stone-300">
         {log.length === 0 ? (
-          <p className="text-stone-500">The duel begins.</p>
+          <p className="text-stone-500">{t("duel.begins")}</p>
         ) : (
           log.map((entry, i) => (
             <p key={i}>
-              {renderLogEntry(entry).map((part, j) =>
+              {renderLogEntry(entry, actionLabels).map((part, j) =>
                 typeof part === "string" ? part : <strong key={j}>{part.bold}</strong>
               )}
             </p>
@@ -249,14 +253,14 @@ export function DuelGame({ random, playSound: playSoundProp = playSound }: DuelG
       {phase === "result" ? (
         <div className="text-center">
           <p className={`text-lg font-semibold ${outcome === "PLAYER_VICTORY" ? "text-emerald-300" : "text-red-300"}`}>
-            {outcome === "PLAYER_VICTORY" ? "Victory!" : "Defeated."}
+            {outcome === "PLAYER_VICTORY" ? t("duel.victory") : t("duel.defeat")}
           </p>
           <button
             type="button"
             onClick={collect}
             className="mt-3 rounded border border-stone-500 bg-stone-800/60 px-4 py-2 text-sm uppercase tracking-wide text-stone-100 hover:bg-stone-700/60"
           >
-            Collect
+            {t("duel.collect")}
           </button>
         </div>
       ) : (
@@ -265,14 +269,14 @@ export function DuelGame({ random, playSound: playSoundProp = playSound }: DuelG
             {ACTIONS.map((action) => {
               const legal = isActionLegal(action, distance);
               return (
-                <Tooltip key={action} label={describeAction(action, activeModifiers)} className="w-full">
+                <Tooltip key={action} label={describeAction(action, actionDescriptions, activeModifiers, t)} className="w-full">
                   <button
                     type="button"
                     onClick={() => chooseAction(action)}
                     disabled={phase !== "choosing" || !legal}
                     className="w-full rounded border border-stone-600 bg-stone-800/60 px-3 py-2 text-xs uppercase tracking-wide text-stone-100 disabled:cursor-not-allowed disabled:opacity-40 enabled:hover:bg-stone-700/60"
                   >
-                    {ACTION_LABELS[action]}
+                    {actionLabels[action]}
                   </button>
                 </Tooltip>
               );
@@ -285,10 +289,10 @@ export function DuelGame({ random, playSound: playSoundProp = playSound }: DuelG
               disabled={phase === "resolving"}
               className="rounded border border-stone-800 px-4 py-2 text-sm uppercase tracking-wide text-stone-400 disabled:cursor-not-allowed disabled:opacity-40 enabled:hover:border-stone-500 enabled:hover:text-stone-100"
             >
-              Flee
+              {t("duel.flee")}
             </button>
           ) : (
-            <p className="text-center text-xs uppercase tracking-wide text-stone-600">There's no retreat from this duel.</p>
+            <p className="text-center text-xs uppercase tracking-wide text-stone-600">{t("duel.noRetreat")}</p>
           )}
         </>
       )}

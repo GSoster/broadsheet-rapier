@@ -1,4 +1,7 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
+import i18n from "./engine/i18n";
+import { useLocaleStore } from "./engine/store/localeStore";
 import { usePlayerStore } from "./engine/store/playerStore";
 import { currenciesToBronzeEquivalent } from "./engine/store/commands";
 import { clampWager } from "./engine/minigames/dice";
@@ -46,8 +49,12 @@ import { EndeavorSchema } from "./content/schemas/endeavor.schema";
 import { DialogueSchema } from "./content/schemas/dialogue.schema";
 import { ItemSchema, type Item } from "./content/schemas/item.schema";
 import { FactionSchema } from "./content/schemas/faction.schema";
+import { BaseNodeTranslatableSchema } from "./content/schemas/shared";
+import { ActorTranslatableSchema } from "./content/schemas/actor.schema";
+import { DialogueTranslatableSchema } from "./content/schemas/dialogue.schema";
 import type { ItemDisplayData, RosterEntryData } from "./engine/components/ManagementDrawer";
 import { loadContent } from "./contentLoader";
+import { loadLocalizedContent, mergeActorTranslatable, mergeBaseNodeTranslatable, mergeDialogueTranslatable } from "./contentLocalization";
 import { resolveDialogueEntryNodeId } from "./dialogueResolution";
 import { collectActiveModifiers } from "./modifierResolution";
 import { computeDistrictEntryEffects, computePoiEntryEffects, type EntryEffect } from "./engine/utils/entryEffects";
@@ -56,7 +63,6 @@ import { isNodeUnlocked } from "./engine/utils/isNodeUnlocked";
 // Every content file is parsed through its schema here, once, at module
 // load — see contentLoader.ts for why. Nothing below this point ever reads
 // a *Raw import directly.
-const settlement = loadContent(SettlementSchema, settlementRaw, "settlement_valdeombra_city");
 const district = loadContent(DistrictSchema, districtRaw, "district_lantern_ward");
 const poi = loadContent(PoiSchema, poiRaw, "poi_crooked_hour_tavern");
 const poiWidowmakerAlley = loadContent(PoiSchema, poiWidowmakerAlleyRaw, "poi_widowmaker_alley");
@@ -130,25 +136,34 @@ const itemsById: Record<string, ItemDisplayData> = Object.fromEntries(
 // itemsById's display-only subset above, which ManagementDrawer consumes.
 // modifierResolution.ts's collectActiveModifiers needs the whole Item.
 const itemRecordsById: Record<string, Item> = Object.fromEntries(itemList.map((item) => [item.id, item]));
-const factionsById = Object.fromEntries(factions.map((f) => [f.id, f]));
-const rosterEntries: RosterEntryData[] = actors.map((a) => ({
-  id: a.id,
-  name: a.name,
-  title: a.title,
-  description: a.description,
-  imageAsset: a.imageAsset,
-  factionNames: a.factionIds.map((fid) => factionsById[fid]?.name ?? fid),
-  dialogueId: a.dialogueId,
-}));
+// Locale overlay discovery — a glob (not per-file static imports, which
+// would break the build for every not-yet-translated file) since most
+// content has no translation yet; this only ever matches files that
+// actually exist. `import: "default"` returns each matched file's parsed
+// JSON directly rather than an ESM module wrapper. Currently pt-BR only
+// (the one non-English locale shipped this phase) — a third locale would
+// need its own glob, or a generalized multi-locale pattern (see
+// docs/features/feature_localization.md's Open Questions).
+const ptBrOverlayModules = import.meta.glob<Record<string, unknown>>("./content/**/*.pt-BR.json", {
+  eager: true,
+  import: "default",
+});
+const ptBrOverlaysById: Record<string, unknown> = {};
+for (const [path, data] of Object.entries(ptBrOverlayModules)) {
+  const filename = path.split("/").pop() ?? path;
+  ptBrOverlaysById[filename.replace(/\.pt-BR\.json$/, "")] = data;
+}
 
 const ENDEAVOR_ID = "endeavor_the_missing_broadsheet";
 
 // Content-derived lookup maps feeding notificationResolution.ts — small and
-// cheap enough to build unconditionally at module load, same tier as
-// factionsById/rosterEntries above.
+// cheap enough to build unconditionally at module load. actorNames/
+// factionNames themselves are NOT built here — Actor/Faction names can be
+// locale-translated, so those two are computed reactively inside App() as
+// localizedActorNames/localizedFactionNames instead (see the `localized`
+// memo below). itemNames/endeavorTitles stay module-scope: no item or
+// endeavor is translated this phase.
 const itemNames = Object.fromEntries(itemList.map((item) => [item.id, item.name]));
-const actorNames = Object.fromEntries(actors.map((a) => [a.id, a.name]));
-const factionNames = Object.fromEntries(factions.map((f) => [f.id, f.name]));
 const endeavorTitles = Object.fromEntries(endeavors.map((e) => [e.id, e.title]));
 const phaseObjectives = Object.fromEntries(
   endeavors.map((e) => [e.id, Object.fromEntries(Object.entries(e.phases).map(([phaseId, phase]) => [phaseId, phase.objectiveText]))])
@@ -166,6 +181,118 @@ const phaseIsTerminal = Object.fromEntries(
 );
 
 function App() {
+  const { t } = useTranslation();
+  const locale = useLocaleStore((state) => state.locale);
+
+  // Drives i18next from the locale store — the only place changeLanguage is
+  // called. See docs/features/feature_localization.md.
+  useEffect(() => {
+    i18n.changeLanguage(locale);
+  }, [locale]);
+
+  // Locale-resolved versions of the six content instances this phase
+  // translates (the vertical slice). Recomputed on every locale change —
+  // NOT memoized only on mount — so a dialogue already open when the
+  // player switches language updates live, not just the next time it's
+  // opened (docs/features/feature_localization.md's Reachability section).
+  // Every other content instance (untranslated) is used straight from its
+  // module-scope English parse, unaffected.
+  const localized = useMemo(() => {
+    const overlayFor = (id: string) => (locale === "en" ? undefined : ptBrOverlaysById[id]);
+    return {
+      settlement: loadLocalizedContent(
+        SettlementSchema,
+        BaseNodeTranslatableSchema,
+        settlementRaw,
+        overlayFor("settlement_valdeombra_city"),
+        "settlement_valdeombra_city",
+        mergeBaseNodeTranslatable
+      ),
+      district: loadLocalizedContent(
+        DistrictSchema,
+        BaseNodeTranslatableSchema,
+        districtRaw,
+        overlayFor("district_lantern_ward"),
+        "district_lantern_ward",
+        mergeBaseNodeTranslatable
+      ),
+      poi: loadLocalizedContent(
+        PoiSchema,
+        BaseNodeTranslatableSchema,
+        poiRaw,
+        overlayFor("poi_crooked_hour_tavern"),
+        "poi_crooked_hour_tavern",
+        mergeBaseNodeTranslatable
+      ),
+      actor: loadLocalizedContent(
+        ActorSchema,
+        ActorTranslatableSchema,
+        actorRaw,
+        overlayFor("actor_mara_venn"),
+        "actor_mara_venn",
+        mergeActorTranslatable
+      ),
+      factionWageringRing: loadLocalizedContent(
+        FactionSchema,
+        BaseNodeTranslatableSchema,
+        factionWageringRingRaw,
+        overlayFor("faction_wagering_ring"),
+        "faction_wagering_ring",
+        mergeBaseNodeTranslatable
+      ),
+      dialogueMaraVenn: loadLocalizedContent(
+        DialogueSchema,
+        DialogueTranslatableSchema,
+        dialogueMaraVennRaw,
+        overlayFor("dialogue_mara_venn"),
+        "dialogue_mara_venn",
+        mergeDialogueTranslatable
+      ),
+    };
+  }, [locale]);
+
+  const localizedPois = useMemo(
+    () => pois.map((p) => (p.id === localized.poi.id ? localized.poi : p)),
+    [localized.poi]
+  );
+  const localizedActors = useMemo(
+    () => actors.map((a) => (a.id === localized.actor.id ? localized.actor : a)),
+    [localized.actor]
+  );
+  const localizedFactions = useMemo(
+    () => factions.map((f) => (f.id === localized.factionWageringRing.id ? localized.factionWageringRing : f)),
+    [localized.factionWageringRing]
+  );
+  const localizedDialogues = useMemo(
+    () => ({ ...dialogues, [localized.dialogueMaraVenn.id]: localized.dialogueMaraVenn }),
+    [localized.dialogueMaraVenn]
+  );
+  const localizedFactionsById = useMemo(
+    () => Object.fromEntries(localizedFactions.map((f) => [f.id, f])),
+    [localizedFactions]
+  );
+  const localizedRosterEntries: RosterEntryData[] = useMemo(
+    () =>
+      localizedActors.map((a) => ({
+        id: a.id,
+        name: a.name,
+        title: a.title,
+        description: a.description,
+        imageAsset: a.imageAsset,
+        factionNames: a.factionIds.map((fid) => localizedFactionsById[fid]?.name ?? fid),
+        dialogueId: a.dialogueId,
+      })),
+    [localizedActors, localizedFactionsById]
+  );
+  const localizedActorNames = useMemo(
+    () => Object.fromEntries(localizedActors.map((a) => [a.id, a.name])),
+    [localizedActors]
+  );
+  const localizedFactionNames = useMemo(
+    () => Object.fromEntries(localizedFactions.map((f) => [f.id, f.name])),
+    [localizedFactions]
+  );
+
   const currentLocation = usePlayerStore((state) => state.currentLocation);
   const currencies = usePlayerStore((state) => state.currencies);
   const inventory = usePlayerStore((state) => state.inventory);
@@ -203,7 +330,7 @@ function App() {
       });
       return;
     }
-    const nodeId = effect.nodeId ?? resolveDialogueEntryNodeId(dialogues[effect.dialogueId], dialogueProgress[effect.dialogueId]);
+    const nodeId = effect.nodeId ?? resolveDialogueEntryNodeId(localizedDialogues[effect.dialogueId], dialogueProgress[effect.dialogueId]);
     dispatchCommand({
       type: "COMMAND_ENTER_DIALOGUE_NODE",
       payload: { dialogueId: effect.dialogueId, nodeId },
@@ -243,7 +370,7 @@ function App() {
   // it never fires over an already-open dialogue.
   useEffect(() => {
     if (currentLocation.poiId && activeDialogue === null) {
-      const target = pois.find((p) => p.id === currentLocation.poiId);
+      const target = localizedPois.find((p) => p.id === currentLocation.poiId);
       if (target) {
         computePoiEntryEffects(target, activeEndeavors, endeavorsById, unlockedNodes)
           .filter((effect): effect is Extract<EntryEffect, { type: "DIALOGUE" }> => effect.type === "DIALOGUE")
@@ -277,9 +404,9 @@ function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeEndeavors]);
 
-  const currentPoi = pois.find((p) => p.id === currentLocation.poiId);
+  const currentPoi = localizedPois.find((p) => p.id === currentLocation.poiId);
 
-  const openDialogue = activeDialogue ? dialogues[activeDialogue.dialogueId] : null;
+  const openDialogue = activeDialogue ? localizedDialogues[activeDialogue.dialogueId] : null;
   const openNode = openDialogue
     ? openDialogue.nodes[resolveDialogueEntryNodeId(openDialogue, dialogueProgress[openDialogue.id])]
     : null;
@@ -292,12 +419,12 @@ function App() {
   // already a free-text display string that content authors keep in sync
   // with the speaking Actor's name, so matching on it resolves a portrait
   // for every scene that Actor speaks in, not just their own.
-  const speakerActor = actors.find((a) => a.name === openNode?.speaker);
+  const speakerActor = localizedActors.find((a) => a.name === openNode?.speaker);
 
   const handleSelectActor = (actorId: string) => {
     setSelectedActorId(actorId);
-    const selected = actors.find((a) => a.id === actorId);
-    const dialogue = selected ? dialogues[selected.dialogueId] : undefined;
+    const selected = localizedActors.find((a) => a.id === actorId);
+    const dialogue = selected ? localizedDialogues[selected.dialogueId] : undefined;
     if (!dialogue) return;
 
     const entryNodeId = resolveDialogueEntryNodeId(dialogue, dialogueProgress[dialogue.id]);
@@ -314,7 +441,7 @@ function App() {
     if (activePoi.id === "poi_crooked_hour_tavern") {
       actions.push({
         id: "action_gamble",
-        label: "Gamble",
+        label: t("actions.gamble"),
         onClick: () => {
           const wager = clampWager(20, currenciesToBronzeEquivalent(currencies));
           dispatchCommand({
@@ -339,7 +466,11 @@ function App() {
         const canAfford = currenciesToBronzeEquivalent(currencies) >= 20;
         actions.push({
           id: "action_pay_off_buyer",
-          label: buyerJustPaid ? "Paid ✓" : canAfford ? "Pay off the buyer (1 silver)" : "Pay off the buyer (need 1 silver)",
+          label: buyerJustPaid
+            ? t("actions.payBuyerPaid")
+            : canAfford
+              ? t("actions.payBuyerAfford")
+              : t("actions.payBuyerCantAfford"),
           disabled: buyerJustPaid || !canAfford,
           onClick: () => {
             dispatchCommand({
@@ -365,7 +496,7 @@ function App() {
         onClick={() => setDrawerOpen(true)}
         className="fixed right-4 top-16 z-30 rounded border border-indigo-800 bg-neutral-900 px-3 py-1 text-xs uppercase tracking-wide hover:border-indigo-500"
       >
-        Journal
+        {t("common.journal")}
       </button>
 
       {currentPoi ? (
@@ -373,7 +504,7 @@ function App() {
           poiName={currentPoi.name}
           poiDescription={currentPoi.description}
           imageAsset={currentPoi.imageAsset}
-          actors={actors
+          actors={localizedActors
             .filter((a) => currentPoi.actorIds.includes(a.id))
             .map((a) => ({ id: a.id, name: a.name, title: a.title, isUnlocked: isNodeUnlocked(a, a.id, unlockedNodes) }))}
           selectedActorId={selectedActorId}
@@ -390,17 +521,17 @@ function App() {
         />
       ) : (
         <WorldNavigationView
-          settlementName={settlement.name}
-          districtName={district.name}
+          settlementName={localized.settlement.name}
+          districtName={localized.district.name}
           // BEHAVIOR FIX (not new scope): this previously read p.isUnlocked
           // directly, the static content default only — PlayerState.unlockedNodes
           // (written by COMMAND_UNLOCK_NODE / EndeavorPhase.unlocksNodesOnComplete)
           // was never consulted, so a POI's lock state could never actually
           // change at runtime. See game-design-spec.md Open Design Gap #13,
           // docs/features/feature_node_unlock_rendering.md, docs/decisions.md.
-          pois={pois.map((p) => ({ id: p.id, name: p.name, isUnlocked: isNodeUnlocked(p, p.id, unlockedNodes) }))}
+          pois={localizedPois.map((p) => ({ id: p.id, name: p.name, isUnlocked: isNodeUnlocked(p, p.id, unlockedNodes) }))}
           onSelectPoi={(poiId) => {
-            const target = pois.find((p) => p.id === poiId);
+            const target = localizedPois.find((p) => p.id === poiId);
             if (target) {
               computePoiEntryEffects(target, activeEndeavors, endeavorsById, unlockedNodes).forEach(executeEntryEffect);
             }
@@ -423,7 +554,7 @@ function App() {
         phaseObjectives={phaseObjectives}
         phaseIsTerminal={phaseIsTerminal}
         items={itemsById}
-        roster={rosterEntries}
+        roster={localizedRosterEntries}
       />
       <MinigameOverlay />
       <DialogueOverlay
@@ -433,7 +564,13 @@ function App() {
       />
       <NotificationTray
         notifications={notifications.map((event) =>
-          resolveNotificationMessage(event, { itemNames, actorNames, factionNames, endeavorTitles })
+          resolveNotificationMessage(event, {
+            itemNames,
+            actorNames: localizedActorNames,
+            factionNames: localizedFactionNames,
+            endeavorTitles,
+            t,
+          })
         )}
         onDismiss={dismissNotification}
       />

@@ -320,7 +320,7 @@ flowchart LR
     subgraph Bridge["Bridge layer — outside src/engine/"]
         App["src/App.tsx<br/>(static JSON imports)"]
         Loader["src/contentLoader.ts<br/>loadContent(schema, raw, label)<br/>→ schema.safeParse(), throws on failure"]
-        Resolution["src/dialogueResolution.ts<br/>src/notificationResolution.ts<br/>(need src/content/ types)"]
+        Resolution["src/dialogueResolution.ts<br/>src/notificationResolution.ts<br/>src/contentLocalization.ts<br/>(need src/content/ types)"]
     end
 
     subgraph EngineT["src/engine/types/"]
@@ -366,8 +366,10 @@ a content import):
   by grep, not assumed; several files carry self-documenting comments
   confirming this is deliberate (`DialogueOverlay.tsx`, `ManagementDrawer.tsx`,
   `entryEffects.ts`).
-- `src/App.tsx` + `src/contentLoader.ts` — both at `src/` root, siblings of
-  `src/engine/`, **outside** it — are the only bridge. Every content JSON
+- `src/App.tsx` + `src/contentLoader.ts` (+ `src/contentLocalization.ts`,
+  `src/dialogueResolution.ts`, `src/notificationResolution.ts`) — all at
+  `src/` root, siblings of `src/engine/`, **outside** it — are the only
+  bridge. Every content JSON
   file `App.tsx` imports is piped through `loadContent(schema, raw, label)`
   before use, which matters concretely: a schema field with `.default(...)`
   (e.g. an omitted `DialogueChoice.commands`) is only ever defaulted when
@@ -382,3 +384,69 @@ part of a `COMMAND_MOVE_TO_POI` payload; an Endeavor phase's
 `unlocksNodesOnComplete` becomes part of a `COMMAND_ADVANCE_ENDEAVOR_PHASE`
 payload. `src/engine/` never looks these up itself, by construction — it has
 no way to.
+
+---
+
+## 6. Localization
+
+Two independent tracks, split exactly along the `src/engine` ↔ `src/content`
+boundary above — see `docs/features/feature_localization.md` for the full
+design.
+
+**Engine/UI strings** (buttons, tooltips, the duel log, HUD labels) live
+entirely inside `src/engine/i18n/` — pure, no content coupling, same as any
+other engine subsystem (`audio/`, `modifiers.ts`):
+- `src/engine/i18n/locales/en.ts` / `pt-BR.ts` — flat, fully-typed
+  dictionaries (`LocaleDictionary`, `locales/types.ts` — both locales are
+  typed against the same interface, so a missing/extra key is a **compile
+  error**, not just a runtime gap).
+- `src/engine/i18n/index.ts` — initializes i18next + react-i18next with
+  those two dictionaries bundled directly (no HTTP backend). Every test file
+  gets this initialized once, globally, via a side-effect import in
+  `src/__tests__/setup/jest-dom.ts` — without it, `useTranslation()`'s `t()`
+  returns the raw key unresolved in any test whose import graph doesn't
+  otherwise reach `src/engine/i18n`.
+- `src/engine/i18n/formatCurrency.ts` — the one previously-triplicated piece
+  of formatting logic (currency labels/abbreviations), unified here and
+  routed through i18next's `count`-based pluralization (`currency.gold_one`/
+  `_other`) rather than English's invariant "Gold" naively reused across
+  locales.
+- `src/engine/store/localeStore.ts` (`useLocaleStore`) — a **second,
+  wholly independent Zustand store** with its own `persist` key
+  (`broadsheet_rapier_locale`), never a field on `PlayerState`/
+  `usePlayerStore`. This is deliberate: locale is a device/browser
+  preference, not game progress — it must never travel with an exported/
+  imported save file, and needs no `PlayerStateSchema`/
+  `persistence.test.ts` changes at all.
+- `App.tsx` has one `useEffect` keyed on `useLocaleStore`'s `locale` that
+  calls `i18n.changeLanguage(locale)` — the only place that's called.
+  `LanguageSelector` (mounted inside `WorldClockHud`) is the only place
+  `useLocaleStore.setLocale` is called from player interaction.
+- **The identifier/label boundary applies to every enum, not just
+  `DuelAction`**: `Shift`/`Season`/`Weather`/`DistanceState`/`MinigameType`
+  values themselves (`"MORNING"`, `"OUT_OF_MEASURE"`, ...) — and everything
+  built on them (`StateCommand` payloads, `DialogueRequirement.allowedShifts`,
+  schema enums, content JSON) — stay fixed, English, and locale-invariant
+  forever. `t()` only ever sits at the render boundary
+  (e.g. `t('enums.shift.MORNING')`), translating a key to a label; it never
+  appears inside a command payload or content-authoring vocabulary.
+
+**Content translations** are a locale **overlay file** sitting alongside its
+canonical English file (`actor_mara_venn.json` + `actor_mara_venn.pt-BR.json`),
+carrying only the translatable subset of fields, every field optional.
+`src/contentLocalization.ts` (root-level bridge, same tier as
+`dialogueResolution.ts`/`notificationResolution.ts`) exports
+`loadLocalizedContent(schema, overlaySchema, raw, overlayRaw, label, merge)` —
+parses the canonical file through the existing `loadContent` completely
+unchanged, then merges a parsed overlay on top via a small, per-content-shape
+merge function (`mergeBaseNodeTranslatable`, `mergeActorTranslatable`,
+`mergeEndeavorTranslatable`, `mergeDialogueTranslatable`) that substitutes
+only the overlay's *defined* leaf fields. `App.tsx` discovers which overlay
+files exist via `import.meta.glob('./content/**/*.pt-BR.json', { eager: true,
+import: "default" })` — a glob, not per-file static imports, since most
+content has no translation yet and a missing file must never break the
+build. The six currently-translated instances are resolved inside a
+`useMemo` keyed on `locale` (not computed once at module load, unlike every
+other content instance) so an already-open dialogue's displayed text updates
+live the moment the player switches language, not only the next time it's
+opened.

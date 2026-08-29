@@ -4,7 +4,7 @@ This project is an interactive 2D point-and-click web simulation set in a 17th-c
 
 ## 1. Operating Directives
 - **Primary Goal:** Maintain a lightweight, modular, data-driven web simulation hosted on GitHub Pages.
-- **Tech Stack Boundary:** React (v18+), Pure TypeScript (Strict Mode), Vite, Tailwind CSS, Zustand, Framer Motion, Lucide-React, Vitest, Zod, `@testing-library/react`, and `jsdom`. DO NOT use plain JavaScript or introduce heavy 3D frameworks.
+- **Tech Stack Boundary:** React (v18+), Pure TypeScript (Strict Mode), Vite, Tailwind CSS, Zustand, Framer Motion, Lucide-React, Vitest, Zod, `@testing-library/react`, `jsdom`, and `i18next`/`react-i18next` (localization, see `docs/features/feature_localization.md`). DO NOT use plain JavaScript or introduce heavy 3D frameworks.
 - **Lore & Narrative Priority:** All world content, dialogue, and NPCs MUST follow the priority hierarchy established in `@docs/narrative-inspirations.md` and adhere strictly to `@docs/world-lore.md`.
 - **UI & Interaction Loop Inspiration:** Princess Trainer — clean location navigation, time-slot scheduling, stat-dependent action menus, and modal minigame overlays. This governs interaction/UI structure only, never narrative tone or content.
 - **Game Design Rules:** Engine-agnostic domain rules (world clock, currency, content model, faction/reputation, minigame concepts) MUST strictly follow `@docs/game-design-spec.md`.

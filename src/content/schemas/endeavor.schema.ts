@@ -36,3 +36,18 @@ export const EndeavorSchema = z.object({
   onPoiEnter: PoiEntryTriggerSchema.optional(),
 });
 export type Endeavor = z.infer<typeof EndeavorSchema>;
+
+// Overlay schema for a locale translation of an Endeavor — its own
+// title/description (Endeavor doesn't extend BaseNodeFieldsSchema, so these
+// aren't BaseNodeTranslatable-derived) plus, per phase, only the
+// player-facing objectiveText. See docs/features/feature_localization.md.
+export const EndeavorTranslatableSchema = z
+  .object({
+    title: z.string().optional(),
+    description: z.string().optional(),
+    phases: z
+      .record(z.string(), z.object({ objectiveText: z.string().optional() }).strict())
+      .optional(),
+  })
+  .strict();
+export type EndeavorTranslatable = z.infer<typeof EndeavorTranslatableSchema>;

@@ -3,11 +3,31 @@ import type { z } from "zod";
 import { SettlementSchema } from "../content/schemas/settlement.schema";
 import { DistrictSchema } from "../content/schemas/district.schema";
 import { PoiSchema } from "../content/schemas/poi.schema";
-import { ActorSchema } from "../content/schemas/actor.schema";
+import { ActorSchema, ActorTranslatableSchema } from "../content/schemas/actor.schema";
 import { FactionSchema } from "../content/schemas/faction.schema";
-import { EndeavorSchema } from "../content/schemas/endeavor.schema";
-import { DialogueSchema } from "../content/schemas/dialogue.schema";
+import { EndeavorSchema, EndeavorTranslatableSchema } from "../content/schemas/endeavor.schema";
+import { DialogueSchema, DialogueTranslatableSchema } from "../content/schemas/dialogue.schema";
 import { ItemSchema } from "../content/schemas/item.schema";
+import { BaseNodeTranslatableSchema } from "../content/schemas/shared";
+import { LOCALES } from "../engine/types";
+
+// A locale overlay file (e.g. actor_mara_venn.pt-BR.json,
+// docs/features/feature_localization.md) sits in the SAME directory as its
+// canonical file and also ends in .json, so the canonical globs below must
+// exclude it explicitly — validating it against the full canonical schema
+// would fail (an overlay deliberately omits required fields). Matches any
+// currently-known locale suffix, not just pt-BR, so a future locale doesn't
+// need this file touched again.
+const LOCALE_SUFFIX_PATTERN = new RegExp(`\\.(${LOCALES.join("|")})\\.json$`);
+function isLocaleOverlayPath(path: string): boolean {
+  return LOCALE_SUFFIX_PATTERN.test(path);
+}
+function excludeOverlays(files: Record<string, unknown>): Record<string, unknown> {
+  return Object.fromEntries(Object.entries(files).filter(([path]) => !isLocaleOverlayPath(path)));
+}
+function onlyOverlays(files: Record<string, unknown>): Record<string, unknown> {
+  return Object.fromEntries(Object.entries(files).filter(([path]) => isLocaleOverlayPath(path)));
+}
 
 // Every real content file under src/content/ must validate against its
 // schema — enumerated via import.meta.glob so this scales automatically as
@@ -19,32 +39,132 @@ const contentGroups: Array<{ label: string; schema: z.ZodType; files: Record<str
   {
     label: "settlements",
     schema: SettlementSchema,
-    files: import.meta.glob("../content/settlements/*.json", { eager: true }),
+    files: excludeOverlays(import.meta.glob("../content/settlements/*.json", { eager: true })),
   },
   {
     label: "districts",
     schema: DistrictSchema,
-    files: import.meta.glob("../content/districts/*.json", { eager: true }),
+    files: excludeOverlays(import.meta.glob("../content/districts/*.json", { eager: true })),
   },
-  { label: "pois", schema: PoiSchema, files: import.meta.glob("../content/pois/*.json", { eager: true }) },
-  { label: "actors", schema: ActorSchema, files: import.meta.glob("../content/actors/*.json", { eager: true }) },
+  {
+    label: "pois",
+    schema: PoiSchema,
+    files: excludeOverlays(import.meta.glob("../content/pois/*.json", { eager: true })),
+  },
+  {
+    label: "actors",
+    schema: ActorSchema,
+    files: excludeOverlays(import.meta.glob("../content/actors/*.json", { eager: true })),
+  },
   {
     label: "factions",
     schema: FactionSchema,
-    files: import.meta.glob("../content/factions/*.json", { eager: true }),
+    files: excludeOverlays(import.meta.glob("../content/factions/*.json", { eager: true })),
   },
   {
     label: "endeavors",
     schema: EndeavorSchema,
-    files: import.meta.glob("../content/endeavors/*.json", { eager: true }),
+    files: excludeOverlays(import.meta.glob("../content/endeavors/*.json", { eager: true })),
   },
   {
     label: "dialogues",
     schema: DialogueSchema,
-    files: import.meta.glob("../content/dialogues/*.json", { eager: true }),
+    files: excludeOverlays(import.meta.glob("../content/dialogues/*.json", { eager: true })),
   },
-  { label: "items", schema: ItemSchema, files: import.meta.glob("../content/items/*.json", { eager: true }) },
+  {
+    label: "items",
+    schema: ItemSchema,
+    files: excludeOverlays(import.meta.glob("../content/items/*.json", { eager: true })),
+  },
 ];
+
+// Parallel groups: every LOCALE OVERLAY file validates against its type's
+// translatable-fields schema instead of the full canonical one, and its
+// base id (filename with the locale suffix stripped) must resolve to a
+// real canonical file — an overlay with a typo'd or orphaned filename fails
+// loudly here rather than being silently ignored. Settlement/District/
+// POI/Faction/Item share BaseNodeTranslatableSchema (structurally
+// identical — just name/description); Actor/Endeavor/Dialogue have their
+// own bespoke overlay schemas.
+const overlayGroups: Array<{ label: string; schema: z.ZodType; files: Record<string, unknown>; canonicalIds: Set<string> }> = [
+  {
+    label: "settlements",
+    schema: BaseNodeTranslatableSchema,
+    files: onlyOverlays(import.meta.glob("../content/settlements/*.json", { eager: true })),
+    canonicalIds: new Set(),
+  },
+  {
+    label: "districts",
+    schema: BaseNodeTranslatableSchema,
+    files: onlyOverlays(import.meta.glob("../content/districts/*.json", { eager: true })),
+    canonicalIds: new Set(),
+  },
+  {
+    label: "pois",
+    schema: BaseNodeTranslatableSchema,
+    files: onlyOverlays(import.meta.glob("../content/pois/*.json", { eager: true })),
+    canonicalIds: new Set(),
+  },
+  {
+    label: "actors",
+    schema: ActorTranslatableSchema,
+    files: onlyOverlays(import.meta.glob("../content/actors/*.json", { eager: true })),
+    canonicalIds: new Set(),
+  },
+  {
+    label: "factions",
+    schema: BaseNodeTranslatableSchema,
+    files: onlyOverlays(import.meta.glob("../content/factions/*.json", { eager: true })),
+    canonicalIds: new Set(),
+  },
+  {
+    label: "endeavors",
+    schema: EndeavorTranslatableSchema,
+    files: onlyOverlays(import.meta.glob("../content/endeavors/*.json", { eager: true })),
+    canonicalIds: new Set(),
+  },
+  {
+    label: "dialogues",
+    schema: DialogueTranslatableSchema,
+    files: onlyOverlays(import.meta.glob("../content/dialogues/*.json", { eager: true })),
+    canonicalIds: new Set(),
+  },
+  {
+    label: "items",
+    schema: BaseNodeTranslatableSchema,
+    files: onlyOverlays(import.meta.glob("../content/items/*.json", { eager: true })),
+    canonicalIds: new Set(),
+  },
+];
+// Backfill each overlay group's canonicalIds from its matching canonical
+// group, now that both are built.
+for (const overlayGroup of overlayGroups) {
+  const canonicalGroup = contentGroups.find((g) => g.label === overlayGroup.label)!;
+  for (const module of Object.values(canonicalGroup.files)) {
+    overlayGroup.canonicalIds.add((module as { default: { id: string } }).default.id);
+  }
+}
+
+function overlayBaseId(path: string): string {
+  const filename = path.split("/").pop() ?? path;
+  return filename.replace(LOCALE_SUFFIX_PATTERN, "");
+}
+
+describe("content integrity: locale overlays", () => {
+  for (const group of overlayGroups) {
+    for (const [path, module] of Object.entries(group.files)) {
+      it(`${path} validates against the ${group.label} translatable schema`, () => {
+        const data = (module as { default: unknown }).default;
+        const result = group.schema.safeParse(data);
+        expect(result.success, result.success ? "" : JSON.stringify(result.error?.issues, null, 2)).toBe(true);
+      });
+
+      it(`${path}'s base id ("${overlayBaseId(path)}") resolves to a real ${group.label} file`, () => {
+        expect(group.canonicalIds.has(overlayBaseId(path))).toBe(true);
+      });
+    }
+  }
+});
 
 describe("content integrity: every file under src/content/ validates against its schema", () => {
   for (const group of contentGroups) {

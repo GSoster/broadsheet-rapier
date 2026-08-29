@@ -1,0 +1,25 @@
+{
+  "nodes": {
+    "node_greeting": {
+      "text": "Mais um panfleto que silenciou e ninguém está falando sobre isso. Engraçado como isso sempre acontece com os que imprimem a verdade.",
+      "choices": [
+        { "id": "choice_ask_about_broadsheet", "text": "O que você sabe sobre isso?" },
+        { "id": "choice_leave_greeting", "text": "Deixa pra lá." }
+      ]
+    },
+    "node_engaged": {
+      "text": "Ela se inclina, a voz baixa. \"Quem quer que esteja por trás disso pagou bem para manter assim. Eu ouço coisas, mas ouvir e contar são moedas diferentes.\"",
+      "choices": [
+        { "id": "choice_ask_again", "text": "Continue, o que mais você ouviu?" },
+        { "id": "choice_press_for_lead", "text": "Você sabe mais do que está dizendo." },
+        { "id": "choice_end_engaged", "text": "Isso é útil. Vou perguntar por aí." }
+      ]
+    },
+    "node_lead_revealed": {
+      "text": "Tem um nome — Corvin Thale, comanda as apostas de um armazém perto do Cais do Sal. Foi ele quem pagou para silenciar aquele panfleto. Tome cuidado ao se aproximar dele.",
+      "choices": [
+        { "id": "choice_thank_and_advance", "text": "Era exatamente disso que eu precisava." }
+      ]
+    }
+  }
+}

@@ -1,6 +1,15 @@
+import type { TFunction } from "i18next";
+import i18n from "../i18n";
 import { applyModifiers, type ModifierSet } from "../modifiers";
 
 export type RandomSource = () => number;
+
+// Defaults evaluateDuelTurn's `t` to English — same "optional param, sane
+// default" shape chooseOpponentAction's `random: RandomSource = Math.random`
+// already uses. DuelGame.tsx always passes its own live, locale-aware `t`
+// from useTranslation(); tests that don't care about localization (the vast
+// majority of duel.test.ts) don't need to pass one at all.
+const defaultT: TFunction = i18n.getFixedT("en");
 
 export type DistanceState = "OUT_OF_MEASURE" | "IN_MEASURE" | "CLOSE_QUARTERS";
 
@@ -70,16 +79,21 @@ const TAUNT_TARGET_FACTION_ID = "faction_wagering_ring";
 
 const AGGRESSIVE_ACTIONS: ReadonlySet<DuelAction> = new Set(["THRUST", "DIRTY_TRICK"]);
 
-// Human-readable labels for the raw DuelAction enum — shared by the log
-// strings below and DuelGame.tsx's action buttons/log highlighting, so the
-// two never drift into two different names for the same action.
-export const ACTION_LABELS: Record<DuelAction, string> = {
-  THRUST: "Thrust",
-  PARRY_RIPOSTE: "Parry & Riposte",
-  FEINT: "Feint",
-  TAUNT: "Taunt",
-  DIRTY_TRICK: "Dirty Trick",
-};
+// Human-readable, locale-aware labels for the raw DuelAction enum — shared
+// by the log strings below and DuelGame.tsx's action buttons/log
+// highlighting, so the two never drift into two different names for the
+// same action. The underlying DuelAction enum values themselves never
+// localize (docs/features/feature_localization.md) — only this rendered
+// label does.
+export function getActionLabels(t: TFunction): Record<DuelAction, string> {
+  return {
+    THRUST: t("duel.actions.THRUST"),
+    PARRY_RIPOSTE: t("duel.actions.PARRY_RIPOSTE"),
+    FEINT: t("duel.actions.FEINT"),
+    TAUNT: t("duel.actions.TAUNT"),
+    DIRTY_TRICK: t("duel.actions.DIRTY_TRICK"),
+  };
+}
 
 function isLegal(action: DuelAction, distance: DistanceState): boolean {
   if (action === "THRUST") return distance === "IN_MEASURE";
@@ -99,8 +113,10 @@ function clampFloor(value: number): number {
 export function evaluateDuelTurn(
   context: DuelContext,
   playerAction: DuelAction,
-  opponentAction: DuelAction
+  opponentAction: DuelAction,
+  t: TFunction = defaultT
 ): DuelTurnResult {
+  const labels = getActionLabels(t);
   const log: string[] = [];
   const player: CombatantState = { ...context.player };
   const opponent: CombatantState = { ...context.opponent };
@@ -108,8 +124,8 @@ export function evaluateDuelTurn(
 
   const playerLegal = isLegal(playerAction, distance);
   const opponentLegal = isLegal(opponentAction, distance);
-  if (!playerLegal) log.push(`Your ${ACTION_LABELS[playerAction]} fails — not at the right distance.`);
-  if (!opponentLegal) log.push(`Opponent's ${ACTION_LABELS[opponentAction]} fails — not at the right distance.`);
+  if (!playerLegal) log.push(t("duel.log.fails", { action: labels[playerAction] }));
+  if (!opponentLegal) log.push(t("duel.log.opponentFails", { action: labels[opponentAction] }));
 
   const playerAttacks = playerLegal && AGGRESSIVE_ACTIONS.has(playerAction);
   const opponentAttacks = opponentLegal && AGGRESSIVE_ACTIONS.has(opponentAction);
@@ -126,12 +142,12 @@ export function evaluateDuelTurn(
   if (playerAttacks && opponentParriesPlayer) {
     const damage = RIPOSTE_COUNTER_DAMAGE;
     player.energy = clampFloor(player.energy - damage);
-    log.push(`Opponent parries your ${ACTION_LABELS[playerAction]} and ripostes for ${damage} energy.`);
+    log.push(t("duel.log.opponentParries", { action: labels[playerAction], damage }));
   } else if (playerAttacks) {
     let damage = playerAction === "THRUST" ? THRUST_DAMAGE : DIRTY_TRICK_DAMAGE;
     if (opponentGuardBroken) {
       damage += GUARD_BREAK_BONUS_DAMAGE;
-      log.push(`Opponent's guard is broken — your ${ACTION_LABELS[playerAction]} lands doubly hard!`);
+      log.push(t("duel.log.guardBrokenYours", { action: labels[playerAction] }));
     }
     // Damage the player deals — the only duel calculation site wired to
     // modifiers this phase (docs/features/feature_modifier_system.md §2.9).
@@ -140,37 +156,37 @@ export function evaluateDuelTurn(
     if (playerAction === "DIRTY_TRICK") {
       opponent.poise = clampFloor(opponent.poise - DIRTY_TRICK_POISE_DRAIN);
     }
-    log.push(`Your ${ACTION_LABELS[playerAction]} lands for ${damage} energy.`);
+    log.push(t("duel.log.landsFor", { action: labels[playerAction], damage }));
   } else if (playerAction === "PARRY_RIPOSTE") {
-    log.push("You hold your guard.");
+    log.push(t("duel.log.holdGuard"));
   }
 
   if (opponentAttacks && playerParriesOpponent) {
     const damage = applyModifiers(RIPOSTE_COUNTER_DAMAGE, context.modifiers, "DUEL_DAMAGE_DEALT");
     opponent.energy = clampFloor(opponent.energy - damage);
-    log.push(`You parry the opponent's ${ACTION_LABELS[opponentAction]} and riposte for ${damage} energy.`);
+    log.push(t("duel.log.youParry", { action: labels[opponentAction], damage }));
   } else if (opponentAttacks) {
     let damage = opponentAction === "THRUST" ? THRUST_DAMAGE : DIRTY_TRICK_DAMAGE;
     if (playerGuardBroken) {
       damage += GUARD_BREAK_BONUS_DAMAGE;
-      log.push("Your guard is broken — the hit lands doubly hard!");
+      log.push(t("duel.log.guardBrokenTheirs"));
     }
     player.energy = clampFloor(player.energy - damage);
     if (opponentAction === "DIRTY_TRICK") {
       player.poise = clampFloor(player.poise - DIRTY_TRICK_POISE_DRAIN);
     }
-    log.push(`Opponent's ${ACTION_LABELS[opponentAction]} lands for ${damage} energy.`);
+    log.push(t("duel.log.opponentLandsFor", { action: labels[opponentAction], damage }));
   } else if (opponentAction === "PARRY_RIPOSTE") {
-    log.push("Opponent holds their guard.");
+    log.push(t("duel.log.opponentHoldsGuard"));
   }
 
   if (playerAction === "FEINT") {
     opponent.poise = clampFloor(opponent.poise - FEINT_POISE_DRAIN);
-    log.push(`Your Feint drains ${FEINT_POISE_DRAIN} poise and closes the distance.`);
+    log.push(t("duel.log.feintYours", { action: labels.FEINT, amount: FEINT_POISE_DRAIN }));
   }
   if (opponentAction === "FEINT") {
     player.poise = clampFloor(player.poise - FEINT_POISE_DRAIN);
-    log.push(`Opponent's Feint drains ${FEINT_POISE_DRAIN} poise and closes the distance.`);
+    log.push(t("duel.log.feintTheirs", { action: labels.FEINT, amount: FEINT_POISE_DRAIN }));
   }
   // A single step regardless of how many sides Feint this turn — mutual
   // Feints don't chain into a double shift.
@@ -185,11 +201,11 @@ export function evaluateDuelTurn(
       drain += TAUNT_POISE_DRAIN_REPUTATION_BONUS;
     }
     opponent.poise = clampFloor(opponent.poise - drain);
-    log.push(`Your Taunt drains ${drain} poise.`);
+    log.push(t("duel.log.tauntYours", { action: labels.TAUNT, amount: drain }));
   }
   if (opponentAction === "TAUNT") {
     player.poise = clampFloor(player.poise - TAUNT_POISE_DRAIN_BASE);
-    log.push(`Opponent's Taunt drains ${TAUNT_POISE_DRAIN_BASE} poise.`);
+    log.push(t("duel.log.tauntTheirs", { action: labels.TAUNT, amount: TAUNT_POISE_DRAIN_BASE }));
   }
 
   let outcome: DuelOutcome = "ONGOING";

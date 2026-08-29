@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import type { DialogueRequirement, StateCommand } from "../types";
 import { usePlayerStore } from "../store/playerStore";
 import { evaluateDialogueRequirement } from "../utils/evaluator";
@@ -34,6 +35,7 @@ export interface DialogueOverlayProps {
 }
 
 export function DialogueOverlay({ dialogueId, node, speakerImageAsset }: DialogueOverlayProps) {
+  const { t } = useTranslation();
   const playerState = usePlayerStore((state) => state);
   const dispatchCommand = usePlayerStore((state) => state.dispatchCommand);
 
@@ -74,7 +76,7 @@ export function DialogueOverlay({ dialogueId, node, speakerImageAsset }: Dialogu
             onClick={closeDialogue}
             className="flex-none text-xs uppercase tracking-wide text-indigo-400 hover:text-indigo-100"
           >
-            Close
+            {t("dialogueOverlay.close")}
           </button>
         </div>
         {/* No added quote marks around node.text: content is free to mix

@@ -4,7 +4,7 @@ This document defines how the current web build implements the rules in `docs/ga
 
 ## 1. Tech Stack
 
-React 18+, TypeScript (strict mode), Vite, Tailwind CSS v4, Zustand, Framer Motion, Lucide-React, Vitest, Zod. No plain JavaScript. No heavy 3D frameworks.
+React 18+, TypeScript (strict mode), Vite, Tailwind CSS v4, Zustand, Framer Motion, Lucide-React, Vitest, Zod, i18next/react-i18next (localization). No plain JavaScript. No heavy 3D frameworks.
 
 ## 2. Naming & Case Conventions (Code)
 
@@ -180,12 +180,58 @@ via `ModifierSourceSchema`:
 `MODIFIER_KEYS` — no item can ever be authored against it, so it's inert by
 construction).
 
+### 5b. Localization
+
+`docs/features/feature_localization.md` has the full design. This section
+tracks the content-facing shape only.
+
+`LOCALES`/`Locale` (`src/engine/types/index.ts`, re-exported alongside
+`SHIFTS`/`MODIFIER_KEYS`): `["en", "pt-BR"] as const`. `'en'` is the
+canonical/default locale — every content file's un-suffixed `.json` is
+always the English version; no `.en.json` overlay exists or is needed.
+
+A locale overlay is a sibling file, `<id>.<locale>.json`, in the same
+directory as its canonical file (e.g. `actor_mara_venn.pt-BR.json` next to
+`actor_mara_venn.json`). It carries only the translatable subset of fields
+for that content type, every field optional, and — unlike every other
+content file — has **no `id` field of its own**: its target is derived from
+its filename (the locale suffix stripped), not a field inside it.
+
+Overlay schemas (`*TranslatableSchema`), one per content shape:
+
+| Content type | Overlay schema | Translatable fields |
+|---|---|---|
+| Settlement / District / POI / Faction / Item | `BaseNodeTranslatableSchema` (`shared.ts`) | `name?`, `description?` |
+| Actor | `ActorTranslatableSchema` (`actor.schema.ts`) | `name?`, `description?`, `title?` |
+| Endeavor | `EndeavorTranslatableSchema` (`endeavor.schema.ts`) | `title?`, `description?`, `phases?: Record<phaseId, { objectiveText? }>` |
+| Dialogue | `DialogueTranslatableSchema` (`dialogue.schema.ts`) | `nodes?: Record<nodeId, { speaker?, text?, choices?: [{ id, text? }] }>` — `choices` stays an array (mirroring the canonical shape), matched by `id`, not array position |
+
+`src/contentLocalization.ts`'s `loadLocalizedContent(schema, overlaySchema,
+raw, overlayRaw, label, merge)` parses the canonical file through the
+existing `loadContent` unchanged, then — if an overlay exists for the
+current locale — parses it through its own schema and merges it on top via
+a small per-shape merge function, substituting only the overlay's *defined*
+leaf fields. `App.tsx` discovers overlay files via `import.meta.glob`
+(not per-file static imports, which would break the build for every
+not-yet-translated file) and resolves the currently-translated instances
+inside a `useMemo` keyed on the locale store's value, so they stay reactive
+to a live language switch rather than fixed at module load like every other
+content instance.
+
+**Personal names are deliberately never translated** — an Actor's `name`
+and a `DialogueNode.speaker` referring to that same Actor should be omitted
+from an overlay (falling back to the canonical value in both locales), since
+`App.tsx`'s speaker-portrait resolution matches `DialogueNode.speaker`
+against `Actor.name` by exact string equality; translating one but not the
+other would silently break that match.
+
 ## 6. Persistence
 
 - Zustand `persist` middleware, `localStorage`, key `broadsheet_rapier_player_state`.
 - `exportSave()`: downloads current `PlayerState` as a `.json` file.
 - `importSave(file)`: parses the file, validates against a `PlayerStateSchema` (structural check — required fields and correct types/enums only, no version migration logic), and rejects the import without touching current state if validation fails.
 - `persistence.test.ts` asserts the exact sorted list of keys written to `localStorage`. This is a hand-maintained list **on purpose**, not an oversight — every new `PlayerState` field must be added to it explicitly, forcing a conscious "should this actually persist?" decision at the moment the field is introduced, rather than it silently persisting (or silently not) by accident. Do not replace it with something that derives the list automatically; that would remove the check it exists to provide.
+- **The selected locale is deliberately NOT part of `PlayerState`.** `useLocaleStore` (`src/engine/store/localeStore.ts`) is a second, wholly independent Zustand `persist` store, its own localStorage key (`broadsheet_rapier_locale`) — a device/browser UI preference, not game progress, so it never travels with `exportSave`/`importSave` and is untouched by `resetProgress`. No `PlayerStateSchema` or `persistence.test.ts` change was needed to add it.
 
 ## 7. Directory Structure
 
@@ -193,17 +239,19 @@ construction).
 src/
   engine/
     types/index.ts
-    store/{playerStore.ts, commands.ts, events.ts, notifications.ts}
+    store/{playerStore.ts, commands.ts, events.ts, notifications.ts, localeStore.ts}
     minigames/{dice.ts, duel.ts, index.ts}
     audio/{playSound.ts}
+    i18n/{index.ts, formatCurrency.ts, locales/{types.ts, en.ts, pt-BR.ts}}
     utils/{evaluator.ts, resolveAssetUrl.ts, entryEffects.ts}
-    components/{WorldClockHud.tsx, WorldNavigationView.tsx, NodeInteractionCanvas.tsx, ManagementDrawer.tsx, AssetFallback.tsx, MinigameOverlay.tsx, DialogueOverlay.tsx, NotificationTray.tsx, Tooltip.tsx, minigames/{DiceGame.tsx, DuelGame.tsx}}
+    components/{WorldClockHud.tsx, WorldNavigationView.tsx, NodeInteractionCanvas.tsx, ManagementDrawer.tsx, AssetFallback.tsx, MinigameOverlay.tsx, DialogueOverlay.tsx, NotificationTray.tsx, Tooltip.tsx, LanguageSelector.tsx, minigames/{DiceGame.tsx, DuelGame.tsx}}
   content/
     schemas/{shared.ts, settlement.schema.ts, district.schema.ts, poi.schema.ts, actor.schema.ts, faction.schema.ts, endeavor.schema.ts, dialogue.schema.ts, item.schema.ts}
-    settlements/ districts/ pois/ actors/ factions/ endeavors/ dialogues/ items/
+    settlements/ districts/ pois/ actors/ factions/ endeavors/ dialogues/ items/ (each may hold `<id>.<locale>.json` overlay files alongside canonical `<id>.json` files)
   dialogueResolution.ts
   notificationResolution.ts
-  __tests__/{schemas.test.ts, content-integrity.test.ts, playerStore.test.ts, persistence.test.ts, commands.test.ts, minigames.test.ts, dice.test.ts, duel.test.ts, notifications.test.ts, notificationResolution.test.ts, playSound.test.ts, resolveAssetUrl.test.ts, entryEffects.test.ts, evaluator.test.ts, resolveDialogueEntryNodeId.test.ts, components/, setup/}
+  contentLocalization.ts
+  __tests__/{schemas.test.ts, content-integrity.test.ts, playerStore.test.ts, persistence.test.ts, commands.test.ts, minigames.test.ts, dice.test.ts, duel.test.ts, notifications.test.ts, notificationResolution.test.ts, playSound.test.ts, resolveAssetUrl.test.ts, entryEffects.test.ts, evaluator.test.ts, resolveDialogueEntryNodeId.test.ts, contentLocalization.test.ts, localeStore.test.ts, i18n.test.ts, formatCurrency.test.ts, components/, setup/}
 public/
   content/assets/{images/districts, images/pois, images/actors, images/items, audio}/
 ```
@@ -226,6 +274,7 @@ public/
 - **Why this exists, concretely:** a schema field declared with `.default(...)` (e.g. `DialogueChoiceSchema.commands`, `DialogueNodeSchema.choices`, `PoiSchema.costShifts`, `ActorSchema.factionIds`) is only ever defaulted when the data is actually run through `.parse()`/`.safeParse()`. A raw static `import` of the JSON returns it exactly as authored — a field omitted in that JSON stays `undefined`/absent at runtime, not the schema's declared default. `content-integrity.test.ts` and `schemas.test.ts` both only ever exercise the *parsed* shape, so they pass regardless of whether the raw JSON includes the field — they cannot catch this class of gap. It was found for real: a dialogue choice omitting `commands` crashed at runtime (`commands is not iterable`) despite every test passing, because `App.tsx` loaded it via raw `import` at the time. See `docs/decisions.md`.
 - **Practical consequence for anyone writing a component that consumes content:** any prop sourced from an `App.tsx` content import can be assumed to already be the fully validated, defaulted shape its schema promises. Don't add a defensive `?? []`/`?? 0` fallback at the point of use for a "the field might be missing because content omitted it" concern — that concern is closed at the loading boundary. (A defensive fallback is still appropriate for a genuinely different concern, e.g. "this lookup might not find a matching item at all" — `pois.find(...)` returning `undefined` is not this class of gap.)
 - **Scope:** this covers content-JSON loading only. `dispatchCommand`'s own input at the `playerStore.ts` boundary (commands built by `App.tsx`/`DialogueOverlay.tsx` as plain TypeScript object literals) is unrelated and still unvalidated at runtime — see §4's `StateCommandSchema` scoping note. Not addressed by this mechanism, and out of scope for it.
+- **Locale overlay files go through the same `loadContent` chokepoint**, via `src/contentLocalization.ts`'s `loadLocalizedContent` (§5b) — an overlay schema field with `.default(...)`/`.optional()` is defaulted for the same reason a canonical field is: it's always run through a real `schema.safeParse()`, never a raw import. `contentLocalization.test.ts` exercises the real `loadLocalizedContent` function against real schemas, not a standalone `.parse()` call, per this section's own standing reachability requirement.
 
 ### Audio Handling (implemented)
 

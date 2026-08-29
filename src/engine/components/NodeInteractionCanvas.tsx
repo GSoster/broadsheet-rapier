@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import { AssetFallback } from "./AssetFallback";
 
 export interface NodeInteractionActor {
@@ -35,6 +36,7 @@ export function NodeInteractionCanvas({
   onSelectActor,
   onLeave,
 }: NodeInteractionCanvasProps) {
+  const { t } = useTranslation();
   return (
     <section className="flex flex-col gap-4 p-6">
       <button
@@ -42,7 +44,7 @@ export function NodeInteractionCanvas({
         onClick={onLeave}
         className="self-start text-xs uppercase tracking-wide text-indigo-400 hover:text-indigo-200"
       >
-        &larr; Back
+        {t("common.back")}
       </button>
       {imageAsset ? (
         <AssetFallback src={imageAsset} alt={poiName} className="h-40 w-full rounded object-cover" />
@@ -69,7 +71,7 @@ export function NodeInteractionCanvas({
                 {actor.name} <span className="text-indigo-400">&middot; {actor.title}</span>
               </>
             ) : (
-              "??? (locked)"
+              t("common.locked")
             )}
           </button>
         ))}

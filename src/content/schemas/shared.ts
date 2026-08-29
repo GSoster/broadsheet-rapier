@@ -15,6 +15,21 @@ export type BaseNodeFields = z.infer<typeof BaseNodeFieldsSchema>;
 
 export const FactionInfluenceSchema = z.record(z.string(), z.number());
 
+// Overlay schema for a locale translation of a BaseNodeFields-derived
+// content type (Settlement/District/POI/Faction/Item — all structurally
+// identical here). Every field optional: a translation can cover only some
+// fields, falling back to the canonical English value for the rest. No `id`
+// field — an overlay file's target is its own filename (`<id>.<locale>.json`
+// with the suffix stripped), not a field inside it. See
+// docs/features/feature_localization.md and src/contentLocalization.ts.
+export const BaseNodeTranslatableSchema = z
+  .object({
+    name: z.string().optional(),
+    description: z.string().optional(),
+  })
+  .strict();
+export type BaseNodeTranslatable = z.infer<typeof BaseNodeTranslatableSchema>;
+
 // Unconditional, node-local: effects that fire whenever THIS node itself is
 // entered. Composed into District/POI. See docs/features/feature_triggerable_effects.md
 // for why this is deliberately NOT the same shape as PoiEntryTriggerSchema
