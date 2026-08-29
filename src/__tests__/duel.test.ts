@@ -15,6 +15,7 @@ import {
   THRUST_DAMAGE,
   type DuelContext,
 } from "../engine/minigames/duel";
+import type { Modifier } from "../engine/modifiers";
 
 function makeContext(overrides: Partial<DuelContext> = {}): DuelContext {
   return {
@@ -23,6 +24,7 @@ function makeContext(overrides: Partial<DuelContext> = {}): DuelContext {
     distance: "IN_MEASURE",
     lastPlayerAction: null,
     playerReputation: { factions: {}, actors: {} },
+    modifiers: [],
     ...overrides,
   };
 }
@@ -267,5 +269,41 @@ describe("chooseOpponentAction", () => {
         }
       }
     }
+  });
+});
+
+describe("evaluateDuelTurn — modifiers (docs/features/feature_modifier_system.md §2.8/§2.9)", () => {
+  const flatDamageBonus: Modifier = {
+    key: "DUEL_DAMAGE_DEALT",
+    op: "FLAT",
+    value: 3,
+    sourceId: "item_duellists_rapier",
+    sourceLabel: "Duellist's Rapier",
+  };
+
+  it("boosts the player's Thrust damage", () => {
+    const context = makeContext({ modifiers: [flatDamageBonus] });
+    const result = evaluateDuelTurn(context, "THRUST", "FEINT");
+    expect(result.opponent.energy).toBe(100 - (THRUST_DAMAGE + 3));
+  });
+
+  it("boosts the player's successful riposte counter-damage too", () => {
+    const context = makeContext({ modifiers: [flatDamageBonus] });
+    const result = evaluateDuelTurn(context, "PARRY_RIPOSTE", "THRUST");
+    expect(result.opponent.energy).toBe(100 - (RIPOSTE_COUNTER_DAMAGE + 3));
+  });
+
+  it("never boosts damage the player TAKES — only DUEL_DAMAGE_DEALT is wired this phase", () => {
+    const context = makeContext({ modifiers: [flatDamageBonus] });
+    const result = evaluateDuelTurn(context, "FEINT", "THRUST");
+    // Opponent's Thrust lands on the player unmodified — DUEL_DAMAGE_DEALT
+    // only ever affects damage flowing FROM the player TO the opponent.
+    expect(result.player.energy).toBe(100 - THRUST_DAMAGE);
+  });
+
+  it("is inert with an empty modifier set, identical to the pre-modifier-system behavior", () => {
+    const context = makeContext({ modifiers: [] });
+    const result = evaluateDuelTurn(context, "THRUST", "FEINT");
+    expect(result.opponent.energy).toBe(100 - THRUST_DAMAGE);
   });
 });

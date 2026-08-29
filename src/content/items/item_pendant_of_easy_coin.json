@@ -1,0 +1,11 @@
+{
+  "id": "item_pendant_of_easy_coin",
+  "name": "Pendant of Easy Coin",
+  "description": "A small brass charm, warm to the touch, said to loosen the grip of anyone paying you.",
+  "isUnlocked": true,
+  "imageAsset": "/content/assets/images/items/pendant_of_easy_coin.jpg",
+  "stackable": false,
+  "modifiers": [
+    { "key": "CURRENCY_GAIN", "op": "PERCENT", "value": 0.05 }
+  ]
+}

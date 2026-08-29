@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { BaseNodeFieldsSchema } from "./shared";
+import { BaseNodeFieldsSchema, ModifierSourceSchema } from "./shared";
 
 // imageAsset is optional on BaseNodeFieldsSchema (POIs/Actors/etc. can go
 // without an image), but items are specifically meant to always have a
@@ -13,5 +13,5 @@ export const ItemSchema = BaseNodeFieldsSchema.extend({
   // there's no second item yet that would expose the difference. See
   // game-design-spec.md's Open Design Gaps.
   stackable: z.boolean(),
-});
+}).merge(ModifierSourceSchema);
 export type Item = z.infer<typeof ItemSchema>;

@@ -142,9 +142,43 @@ Concrete field types, matching `game-design-spec.md` §8:
 - **Dialogue**: `id`, `startNodeId: string`, `nodes: Record<string, DialogueNode>`.
 - **DialogueNode**: `id`, `speaker: string`, `text: string`, `choices: DialogueChoice[]` (default `[]`).
 - **DialogueChoice**: `id`, `text: string`, `nextNodeId?: string` (omitted means this choice ends the conversation), `requires?: DialogueRequirement`, `commands: StateCommand[]` (default `[]`).
-- **Item**: base node fields, but with `imageAsset: string` **required** (not optional) — an Item always needs a visible representation, unlike every other node type — plus `stackable: boolean`. No enforcement of `stackable` anywhere yet (`game-design-spec.md` Open Design Gap #12); it's a schema-level distinction only. `item_rapier` is the one instance so far.
+- **Item**: base node fields, but with `imageAsset: string` **required** (not optional) — an Item always needs a visible representation, unlike every other node type — plus `stackable: boolean` (no enforcement anywhere yet, `game-design-spec.md` Open Design Gap #12; schema-level distinction only) and `modifiers: ModifierGrant[]` (default `[]`, via `ModifierSourceSchema` — see below). Five instances so far: `item_rapier`, `item_vantry_rapier`, `item_duellists_rapier`, `item_letter_of_introduction`, `item_pendant_of_easy_coin`.
 
 Schemas live in `src/content/schemas/`. All content JSON under `src/content/` must validate against its corresponding schema. Territory has no schema — deferred per `game-design-spec.md` §2.
+
+### 5a. Modifiers
+
+Per-item stat bonuses — `docs/features/feature_modifier_system.md` has the
+full design (targeting rule, stacking arithmetic, rounding, the currency
+sign-derivation, the gambling carve-out). This section only tracks the
+content-facing shape and the current key list, per the spec's §2.11
+procedure for adding a new key.
+
+`ModifierGrantSchema` (`src/content/schemas/shared.ts`), composed into Item
+via `ModifierSourceSchema`:
+
+```ts
+{ key: ModifierKey, op: "FLAT" | "PERCENT", value: number, targetId?: string }
+```
+
+`MODIFIER_KEYS` (`src/engine/modifiers.ts`, re-exported from
+`src/engine/types/index.ts` alongside `SHIFTS`):
+
+| Key | Wired this phase? | Call site |
+|---|---|---|
+| `DUEL_DAMAGE_DEALT` | Yes | `src/engine/minigames/duel.ts` — every hit the *player* lands (Thrust/Dirty Trick, and a successful Parry & Riposte's counter) |
+| `DUEL_DAMAGE_TAKEN` | No | Reserved; damage the player *takes* is not modified this phase |
+| `DUEL_STARTING_POISE` | No | Reserved; poise is still a flat constant |
+| `CURRENCY_GAIN` | Yes | `COMMAND_ADJUST_CURRENCY` (`src/engine/store/commands.ts`), sign-derived from a positive `amount` |
+| `CURRENCY_LOSS` | Yes | Same handler, sign-derived from a negative `amount` |
+| `REPUTATION_GAIN` | Yes | `COMMAND_ADJUST_REPUTATION`, sign-derived from a positive `amount`, targeted at `payload.targetId` |
+| `REPUTATION_LOSS` | Yes | Same handler, negative `amount` |
+
+`COMMAND_ADJUST_CURRENCY`'s payload also accepts an optional
+`modifierKey?: string` override, used by the dice minigame's
+`CURRENCY_GAMBLING_WINNINGS` carve-out (a key deliberately **not** in
+`MODIFIER_KEYS` — no item can ever be authored against it, so it's inert by
+construction).
 
 ## 6. Persistence
 

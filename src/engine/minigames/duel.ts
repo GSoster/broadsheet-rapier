@@ -1,3 +1,5 @@
+import { applyModifiers, type ModifierSet } from "../modifiers";
+
 export type RandomSource = () => number;
 
 export type DistanceState = "OUT_OF_MEASURE" | "IN_MEASURE" | "CLOSE_QUARTERS";
@@ -21,6 +23,13 @@ export interface DuelContext {
   // signature. Deliberately open to further extension later (equipped
   // weapon, etc.) the same way — see game-design-spec.md Open Design Gaps.
   playerReputation: { factions: Record<string, number>; actors: Record<string, number> };
+  // The player's active item-granted modifiers (docs/features/
+  // feature_modifier_system.md §2.8's "context extension, no command"
+  // treatment). Only DUEL_DAMAGE_DEALT is wired this phase — it modifies the
+  // damage the PLAYER's own Thrust/Dirty Trick deals, not damage the player
+  // takes (DUEL_DAMAGE_TAKEN/DUEL_STARTING_POISE stay unwired, matching the
+  // one worked example the spec actually gives).
+  modifiers: ModifierSet;
 }
 
 export type DuelOutcome = "ONGOING" | "PLAYER_VICTORY" | "PLAYER_DEFEAT";
@@ -124,6 +133,9 @@ export function evaluateDuelTurn(
       damage += GUARD_BREAK_BONUS_DAMAGE;
       log.push(`Opponent's guard is broken — your ${ACTION_LABELS[playerAction]} lands doubly hard!`);
     }
+    // Damage the player deals — the only duel calculation site wired to
+    // modifiers this phase (docs/features/feature_modifier_system.md §2.9).
+    damage = applyModifiers(damage, context.modifiers, "DUEL_DAMAGE_DEALT");
     opponent.energy = clampFloor(opponent.energy - damage);
     if (playerAction === "DIRTY_TRICK") {
       opponent.poise = clampFloor(opponent.poise - DIRTY_TRICK_POISE_DRAIN);
@@ -134,7 +146,7 @@ export function evaluateDuelTurn(
   }
 
   if (opponentAttacks && playerParriesOpponent) {
-    const damage = RIPOSTE_COUNTER_DAMAGE;
+    const damage = applyModifiers(RIPOSTE_COUNTER_DAMAGE, context.modifiers, "DUEL_DAMAGE_DEALT");
     opponent.energy = clampFloor(opponent.energy - damage);
     log.push(`You parry the opponent's ${ACTION_LABELS[opponentAction]} and riposte for ${damage} energy.`);
   } else if (opponentAttacks) {

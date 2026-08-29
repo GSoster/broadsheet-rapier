@@ -95,10 +95,20 @@ export function DiceGame({ sourceId, random, playSound: playSoundProp = playSoun
         sourceId,
         config: { wager: clamped },
         onSuccessCommands: [
-          { type: "COMMAND_ADJUST_CURRENCY", payload: { denomination: "bronze", amount: clamped } },
+          {
+            type: "COMMAND_ADJUST_CURRENCY",
+            // Overrides the sign-derived CURRENCY_GAIN key — an item's
+            // currency bonus would otherwise make dice's even-odds throw
+            // positive-EV (docs/features/feature_modifier_system.md §2.8).
+            // No item is authored against this key, so it's inert today.
+            payload: { denomination: "bronze", amount: clamped, modifierKey: "CURRENCY_GAMBLING_WINNINGS" },
+          },
         ],
         onFailureCommands: [
-          { type: "COMMAND_ADJUST_CURRENCY", payload: { denomination: "bronze", amount: -clamped } },
+          {
+            type: "COMMAND_ADJUST_CURRENCY",
+            payload: { denomination: "bronze", amount: -clamped, modifierKey: "CURRENCY_GAMBLING_WINNINGS" },
+          },
         ],
       },
     });

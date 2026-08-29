@@ -13,6 +13,7 @@ import {
   type DuelContext,
   type DuelOutcome,
 } from "../../minigames/duel";
+import { selectModifiers, type ModifierSet } from "../../modifiers";
 import { playSound } from "../../audio/playSound";
 import { Tooltip } from "../Tooltip";
 
@@ -42,6 +43,29 @@ const DISTANCE_DESCRIPTIONS: Record<DistanceState, string> = {
   IN_MEASURE: "Close enough for Thrust. Still too far for a Dirty Trick — Feint again to reach Close Quarters.",
   CLOSE_QUARTERS: "Close enough for a Dirty Trick. Too close for Thrust to connect.",
 };
+
+// Actions where the PLAYER deals damage to the opponent — the exact set
+// wired to DUEL_DAMAGE_DEALT in duel.ts (THRUST/DIRTY_TRICK's own hit, and a
+// successful PARRY_RIPOSTE's counter-damage).
+const DAMAGE_DEALING_ACTIONS: ReadonlySet<DuelAction> = new Set(["THRUST", "DIRTY_TRICK", "PARRY_RIPOSTE"]);
+
+// Stage 3 of the modifier rollout (docs/features/feature_modifier_system.md
+// §2.9): surfaces active DUEL_DAMAGE_DEALT modifiers in the action tooltip,
+// rather than leaving an equipped-feeling bonus invisible to the player.
+function describeDamageModifiers(modifiers: ModifierSet): string {
+  const matching = selectModifiers(modifiers, "DUEL_DAMAGE_DEALT");
+  if (matching.length === 0) return "";
+  const parts = matching.map((m) => {
+    const magnitude = m.op === "FLAT" ? `${m.value >= 0 ? "+" : ""}${m.value}` : `${m.value >= 0 ? "+" : ""}${Math.round(m.value * 100)}%`;
+    return `${magnitude} from ${m.sourceLabel}`;
+  });
+  return ` Damage bonus: ${parts.join(", ")}.`;
+}
+
+function describeAction(action: DuelAction, modifiers: ModifierSet): string {
+  const base = ACTION_DESCRIPTIONS[action];
+  return DAMAGE_DEALING_ACTIONS.has(action) ? base + describeDamageModifiers(modifiers) : base;
+}
 
 const ENERGY_DESCRIPTION = "Health for this duel. Reaches 0 and that side loses.";
 const POISE_DESCRIPTION =
@@ -86,6 +110,7 @@ export interface DuelGameProps {
 
 export function DuelGame({ random, playSound: playSoundProp = playSound }: DuelGameProps) {
   const reputation = usePlayerStore((state) => state.reputation);
+  const activeModifiers = usePlayerStore((state) => state.activeModifiers);
   const activeMinigame = usePlayerStore((state) => state.activeMinigame);
   const dispatchCommand = usePlayerStore((state) => state.dispatchCommand);
 
@@ -121,6 +146,7 @@ export function DuelGame({ random, playSound: playSoundProp = playSound }: DuelG
         distance,
         lastPlayerAction,
         playerReputation: reputation,
+        modifiers: activeModifiers,
       };
       const opponentAction = chooseOpponentAction(context, random);
       const result = minigameResolvers.DUEL(context, playerAction, opponentAction);
@@ -239,7 +265,7 @@ export function DuelGame({ random, playSound: playSoundProp = playSound }: DuelG
             {ACTIONS.map((action) => {
               const legal = isActionLegal(action, distance);
               return (
-                <Tooltip key={action} label={ACTION_DESCRIPTIONS[action]} className="w-full">
+                <Tooltip key={action} label={describeAction(action, activeModifiers)} className="w-full">
                   <button
                     type="button"
                     onClick={() => chooseAction(action)}

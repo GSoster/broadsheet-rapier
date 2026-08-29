@@ -33,6 +33,9 @@ import dialogueReckoningWinRaw from "./content/dialogues/dialogue_reckoning_win.
 import dialogueReckoningLoseRaw from "./content/dialogues/dialogue_reckoning_lose.json";
 import itemRapierRaw from "./content/items/item_rapier.json";
 import itemVantryRapierRaw from "./content/items/item_vantry_rapier.json";
+import itemDuellistsRapierRaw from "./content/items/item_duellists_rapier.json";
+import itemLetterOfIntroductionRaw from "./content/items/item_letter_of_introduction.json";
+import itemPendantOfEasyCoinRaw from "./content/items/item_pendant_of_easy_coin.json";
 import factionCityWatchRaw from "./content/factions/faction_city_watch.json";
 import factionWageringRingRaw from "./content/factions/faction_wagering_ring.json";
 import { SettlementSchema } from "./content/schemas/settlement.schema";
@@ -41,11 +44,12 @@ import { PoiSchema } from "./content/schemas/poi.schema";
 import { ActorSchema } from "./content/schemas/actor.schema";
 import { EndeavorSchema } from "./content/schemas/endeavor.schema";
 import { DialogueSchema } from "./content/schemas/dialogue.schema";
-import { ItemSchema } from "./content/schemas/item.schema";
+import { ItemSchema, type Item } from "./content/schemas/item.schema";
 import { FactionSchema } from "./content/schemas/faction.schema";
 import type { ItemDisplayData, RosterEntryData } from "./engine/components/ManagementDrawer";
 import { loadContent } from "./contentLoader";
 import { resolveDialogueEntryNodeId } from "./dialogueResolution";
+import { collectActiveModifiers } from "./modifierResolution";
 import { computeDistrictEntryEffects, computePoiEntryEffects, type EntryEffect } from "./engine/utils/entryEffects";
 import { isNodeUnlocked } from "./engine/utils/isNodeUnlocked";
 
@@ -106,13 +110,26 @@ const dialogueList = [
   dialogueReckoningLose,
 ];
 const dialogues = Object.fromEntries(dialogueList.map((d) => [d.id, d]));
-const itemList = [itemRapier, itemVantryRapier];
+const itemDuellistsRapier = loadContent(ItemSchema, itemDuellistsRapierRaw, "item_duellists_rapier");
+const itemLetterOfIntroduction = loadContent(ItemSchema, itemLetterOfIntroductionRaw, "item_letter_of_introduction");
+const itemPendantOfEasyCoin = loadContent(ItemSchema, itemPendantOfEasyCoinRaw, "item_pendant_of_easy_coin");
+const itemList = [
+  itemRapier,
+  itemVantryRapier,
+  itemDuellistsRapier,
+  itemLetterOfIntroduction,
+  itemPendantOfEasyCoin,
+];
 const itemsById: Record<string, ItemDisplayData> = Object.fromEntries(
   itemList.map((item) => [
     item.id,
     { name: item.name, description: item.description, imageAsset: item.imageAsset },
   ])
 );
+// Full parsed Item objects (including `modifiers`) — distinct from
+// itemsById's display-only subset above, which ManagementDrawer consumes.
+// modifierResolution.ts's collectActiveModifiers needs the whole Item.
+const itemRecordsById: Record<string, Item> = Object.fromEntries(itemList.map((item) => [item.id, item]));
 const factionsById = Object.fromEntries(factions.map((f) => [f.id, f]));
 const rosterEntries: RosterEntryData[] = actors.map((a) => ({
   id: a.id,
@@ -151,6 +168,8 @@ const phaseIsTerminal = Object.fromEntries(
 function App() {
   const currentLocation = usePlayerStore((state) => state.currentLocation);
   const currencies = usePlayerStore((state) => state.currencies);
+  const inventory = usePlayerStore((state) => state.inventory);
+  const setActiveModifiers = usePlayerStore((state) => state.setActiveModifiers);
   const activeEndeavors = usePlayerStore((state) => state.activeEndeavors);
   const unlockedNodes = usePlayerStore((state) => state.unlockedNodes);
   const dialogueProgress = usePlayerStore((state) => state.dialogueProgress);
@@ -191,6 +210,17 @@ function App() {
     });
     dispatchCommand({ type: "COMMAND_OPEN_DIALOGUE", payload: { dialogueId: effect.dialogueId } });
   }
+
+  // Recomputes the store's activeModifiers whenever owned items change.
+  // Keyed on `inventory` only — once `equipped` exists (deferred, §3.1),
+  // it joins this dependency list. See docs/features/
+  // feature_modifier_system.md §2.8's named limitation: this recompute
+  // happens a render cycle after dispatchCommand runs, so a command that
+  // both grants a modifier-bearing item and needs that modifier applied
+  // within the same dispatch isn't supported yet.
+  useEffect(() => {
+    setActiveModifiers(collectActiveModifiers({ inventory }, itemRecordsById));
+  }, [inventory, setActiveModifiers]);
 
   useEffect(() => {
     computeDistrictEntryEffects(district).forEach(executeEntryEffect);

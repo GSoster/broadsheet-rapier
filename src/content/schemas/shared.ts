@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { EntryEffectSchema, SHIFTS } from "../../engine/types";
+import { EntryEffectSchema, MODIFIER_KEYS, SHIFTS } from "../../engine/types";
 
 export const ShiftSchema = z.enum(SHIFTS);
 export type Shift = z.infer<typeof ShiftSchema>;
@@ -38,3 +38,23 @@ export const PoiEntryTriggerSchema = z
     onEnter: z.array(EntryEffectSchema),
   })
   .strict();
+
+// A single stat bonus an item grants while owned. See
+// docs/features/feature_modifier_system.md §2.5 — targetId narrows the bonus
+// to one faction/actor; omitted means untargeted (applies wherever no more
+// specific modifier matches, per §2.4's targeting rule).
+export const ModifierGrantSchema = z
+  .object({
+    key: z.enum(MODIFIER_KEYS),
+    op: z.enum(["FLAT", "PERCENT"]),
+    value: z.number(),
+    targetId: z.string().optional(),
+  })
+  .strict();
+
+// Composable capability fragment, mirroring TriggerableSchema above — an
+// Item (or any future content type) merges this in to become a modifier
+// source. Owned-gated only this phase; equip-gating is deferred (§2.6/§3.1).
+export const ModifierSourceSchema = z.object({
+  modifiers: z.array(ModifierGrantSchema).default([]),
+});

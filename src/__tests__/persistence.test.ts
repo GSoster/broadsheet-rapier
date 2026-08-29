@@ -33,6 +33,11 @@ describe("localStorage persistence", () => {
     expect(persisted.state).not.toHaveProperty("dispatchCommand");
     expect(persisted.state).not.toHaveProperty("exportSave");
     expect(persisted.state).not.toHaveProperty("importSave");
+    // activeModifiers: store-only, same treatment as eventLog/notifications
+    // (docs/features/feature_modifier_system.md) — recomputed from inventory
+    // on every load, never itself a save-file value.
+    expect(persisted.state).not.toHaveProperty("activeModifiers");
+    expect(persisted.state).not.toHaveProperty("setActiveModifiers");
     expect(Object.keys(persisted.state).sort()).toEqual(
       [
         "activeDialogue",

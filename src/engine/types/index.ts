@@ -1,5 +1,11 @@
 import { z } from "zod";
 import type { DistanceState } from "../minigames/duel";
+import { MODIFIER_KEYS } from "../modifiers";
+
+// Re-exported alongside SHIFTS so content schemas (ModifierGrantSchema) can
+// reference the key list without importing src/engine/modifiers.ts directly
+// — engine/types is the schema-facing surface, same as SHIFTS/EntryEffect.
+export { MODIFIER_KEYS };
 
 export type CommandType =
   | "COMMAND_ADVANCE_SHIFT"
@@ -189,7 +195,17 @@ export const StateCommandSchema: z.ZodType<StateCommand<any>> = z.discriminatedU
   z.object({
     type: z.literal("COMMAND_ADJUST_CURRENCY"),
     payload: z
-      .object({ denomination: z.enum(["gold", "silver", "bronze"]), amount: z.number() })
+      .object({
+        denomination: z.enum(["gold", "silver", "bronze"]),
+        amount: z.number(),
+        // Overrides the sign-derived CURRENCY_GAIN/CURRENCY_LOSS key — the
+        // one escape valve a command payload needs (docs/features/
+        // feature_modifier_system.md §2.8). Currently used only by the dice
+        // minigame's CURRENCY_GAMBLING_WINNINGS carve-out, so it's not a
+        // member of MODIFIER_KEYS itself; any string is accepted rather than
+        // widening MODIFIER_KEYS for a key no item is authored against.
+        modifierKey: z.string().optional(),
+      })
       .strict(),
   }),
   z.object({

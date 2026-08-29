@@ -29,10 +29,10 @@ sequenceDiagram
     UI->>Store: dispatchCommand({ type, payload })
     activate Store
     Store->>Store: extractPlayerState(store)  // project down to PlayerState
-    Store->>Apply: applyCommand(before, command)
+    Store->>Apply: applyCommand(before, command, { modifiers: activeModifiers })
     activate Apply
     Apply->>Apply: handlers[command.type]
-    Apply->>Handler: handler(state, payload)
+    Apply->>Handler: handler(state, payload, ctx)
     Handler-->>Apply: new PlayerState (spread-based, immutable)
     Apply-->>Store: new PlayerState
     deactivate Apply
@@ -46,12 +46,34 @@ sequenceDiagram
 `Record<CommandType, CommandHandler>` map, not a `switch` — one entry per
 dispatchable command type.
 
+**Modifiers ride along as an optional context argument, not a new command.**
+`applyCommand(state, command, ctx?: { modifiers?: ModifierSet })` — added by
+`docs/features/feature_modifier_system.md`. `ctx.modifiers` is a `ModifierSet`
+aggregated upstream by `src/modifierResolution.ts`'s `collectActiveModifiers`
+(a bridge file outside `src/engine/`, since it needs Item content) from the
+player's inventory, recomputed by an `App.tsx` `useEffect` keyed on
+`inventory` and pushed into the store's non-persisted `activeModifiers`
+field. `dispatchCommand` reads `activeModifiers` and passes it through;
+`ctx` defaults to `{}` so every pre-existing call to `applyCommand` (tests
+included) behaves exactly as before. `COMMAND_ADJUST_CURRENCY`/
+`COMMAND_ADJUST_REPUTATION`'s handlers derive a `ModifierKey` from the sign
+of the payload's `amount` and scale the magnitude through
+`applyModifiers` (`src/engine/modifiers.ts`) before reapplying the sign;
+`src/engine/minigames/duel.ts`'s damage-dealing sites do the same with
+`ctx.modifiers` passed through `DuelContext`. See the spec for the full
+targeting/stacking/rounding rules — this file only tracks where modifiers
+enter the CQRS flow, not the modifier system's own internals.
+
 **Recursion, not re-dispatch.** Two handlers apply their own nested commands
 by calling `applyCommand` directly, never `dispatchCommand`:
 - `COMMAND_RESOLVE_MINIGAME` loops the launched minigame's
   `onSuccessCommands`/`onFailureCommands` through `applyCommand`.
 - `COMMAND_SELECT_DIALOGUE_CHOICE` loops the chosen `DialogueChoice.commands`
   through `applyCommand`.
+
+Both recursive calls forward the same `ctx` they received, so a modifier
+applies identically whether a command is dispatched at the top level or
+reached through one of these nested loops.
 
 Only the **outermost** `dispatchCommand` call produces one `eventLog` entry
 and one notification diff — intermediate states inside a nested resolution
@@ -74,7 +96,8 @@ component (rather than sourced from content JSON) would reach a handler
 unchecked. This is a deliberate, documented gap, not an oversight.
 
 **Purity scope.** Every handler in the `handlers` map is a pure function of
-`(state, payload) → PlayerState`, confirmed spread-based with no mutation.
+`(state, payload, ctx) → PlayerState`, confirmed spread-based with no
+mutation — `ctx.modifiers` is read-only input, not a side channel.
 `CONTRIBUTING.md`'s "command handlers are pure where possible" claim is
 accurate and scopes itself correctly — it's the *handler* layer that's pure.
 The store layer wrapping it (`playerStore.ts`) is not, by design:

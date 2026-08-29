@@ -5,6 +5,7 @@ import { PlayerStateSchema } from "../types";
 import { applyCommand } from "./commands";
 import { createEvent, type StateChangeEvent } from "./events";
 import { diffForNotifications, toNotificationEvent, type NotificationEvent, type RawNotificationEvent } from "./notifications";
+import type { ModifierSet } from "../modifiers";
 
 export const initialPlayerState: PlayerState = {
   // A small starting purse (50 bronze-equivalent) so the dice minigame is
@@ -34,6 +35,14 @@ interface PlayerStore extends PlayerState {
   // never touches PlayerState/PlayerStateSchema. See
   // docs/features/feature_notification_system.md.
   notifications: NotificationEvent[];
+  // Store-only, never persisted — same treatment as eventLog/notifications.
+  // Recomputed by App.tsx's useEffect on `inventory` (and, once it exists,
+  // `equipped`) via modifierResolution.ts's collectActiveModifiers, since the
+  // store itself never imports src/content/. dispatchCommand reads this to
+  // build applyCommand's ctx; DuelGame.tsx selects it directly for
+  // DuelContext.modifiers, the same pattern it already uses for reputation.
+  activeModifiers: ModifierSet;
+  setActiveModifiers: (modifiers: ModifierSet) => void;
   dispatchCommand: (command: StateCommand) => void;
   dismissNotification: (id: string) => void;
   // For content-aware call sites outside commands.ts (App.tsx's
@@ -102,11 +111,16 @@ export const usePlayerStore = create<PlayerStore>()(
       ...initialPlayerState,
       eventLog: [],
       notifications: [],
+      activeModifiers: [],
+
+      setActiveModifiers: (modifiers) => {
+        set({ activeModifiers: modifiers });
+      },
 
       dispatchCommand: (command) => {
         set((store) => {
           const before = extractPlayerState(store);
-          const nextPlayerState = applyCommand(before, command);
+          const nextPlayerState = applyCommand(before, command, { modifiers: store.activeModifiers });
           const newNotifications = diffForNotifications(before, nextPlayerState).map(toNotificationEvent);
           return {
             ...nextPlayerState,

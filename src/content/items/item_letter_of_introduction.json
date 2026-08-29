@@ -1,0 +1,11 @@
+{
+  "id": "item_letter_of_introduction",
+  "name": "Letter of Introduction",
+  "description": "A City Watch seal and a name that opens doors — carried, not read, its worth is entirely in who vouches for you.",
+  "isUnlocked": true,
+  "imageAsset": "/content/assets/images/items/letter_of_introduction.jpg",
+  "stackable": false,
+  "modifiers": [
+    { "key": "REPUTATION_GAIN", "op": "PERCENT", "value": 0.25, "targetId": "faction_city_watch" }
+  ]
+}

@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { applyCommand } from "../engine/store/commands";
 import { initialPlayerState } from "../engine/store/playerStore";
 import type { PlayerState } from "../engine/types";
+import type { Modifier } from "../engine/modifiers";
 
 function makeState(overrides: Partial<PlayerState> = {}): PlayerState {
   return { ...initialPlayerState, ...overrides };
@@ -112,6 +113,164 @@ describe("COMMAND_ADJUST_CURRENCY", () => {
       payload: { denomination: "silver", amount: -10 },
     });
     expect(next.currencies).toEqual({ gold: 0, silver: 0, bronze: 0 });
+  });
+});
+
+describe("COMMAND_ADJUST_CURRENCY — modifiers", () => {
+  // docs/features/feature_modifier_system.md §2.8/§2.10.
+
+  const currencyGain: Modifier = {
+    key: "CURRENCY_GAIN",
+    op: "PERCENT",
+    value: 0.5,
+    sourceId: "item_test_fixture",
+    sourceLabel: "Test Fixture",
+  };
+
+  it("applies a CURRENCY_GAIN modifier to a positive amount, denominated in bronze-equivalent", () => {
+    const state = makeState({ currencies: { gold: 0, silver: 0, bronze: 0 } });
+    const next = applyCommand(
+      state,
+      { type: "COMMAND_ADJUST_CURRENCY", payload: { denomination: "bronze", amount: 10 } },
+      { modifiers: [currencyGain] }
+    );
+    // 10 * 1.5 = 15
+    expect(next.currencies).toEqual({ gold: 0, silver: 0, bronze: 15 });
+  });
+
+  it("never applies a CURRENCY_GAIN modifier to a negative amount", () => {
+    const state = makeState({ currencies: { gold: 0, silver: 0, bronze: 10 } });
+    const next = applyCommand(
+      state,
+      { type: "COMMAND_ADJUST_CURRENCY", payload: { denomination: "bronze", amount: -10 } },
+      { modifiers: [currencyGain] }
+    );
+    // A CURRENCY_GAIN modifier must never touch a loss — sign routing, not
+    // magnitude, decides which key applies.
+    expect(next.currencies).toEqual({ gold: 0, silver: 0, bronze: 0 });
+  });
+
+  it("is a no-op with no modifiers supplied (ctx omitted), identical to today", () => {
+    const state = makeState({ currencies: { gold: 0, silver: 0, bronze: 10 } });
+    const next = applyCommand(state, {
+      type: "COMMAND_ADJUST_CURRENCY",
+      payload: { denomination: "bronze", amount: 5 },
+    });
+    expect(next.currencies).toEqual({ gold: 0, silver: 0, bronze: 15 });
+  });
+
+  it("amount: 0 is a no-op and never conjures currency from Math.sign(0) === 0", () => {
+    const state = makeState({ currencies: { gold: 0, silver: 0, bronze: 10 } });
+    const next = applyCommand(
+      state,
+      { type: "COMMAND_ADJUST_CURRENCY", payload: { denomination: "bronze", amount: 0 } },
+      { modifiers: [currencyGain] }
+    );
+    expect(next.currencies).toEqual({ gold: 0, silver: 0, bronze: 10 });
+  });
+
+  it("a modifierKey override wins over the sign-derived key", () => {
+    const state = makeState({ currencies: { gold: 0, silver: 0, bronze: 0 } });
+    const next = applyCommand(
+      state,
+      {
+        type: "COMMAND_ADJUST_CURRENCY",
+        payload: { denomination: "bronze", amount: 10, modifierKey: "CURRENCY_GAMBLING_WINNINGS" },
+      },
+      { modifiers: [currencyGain] }
+    );
+    // The gambling carve-out key: no modifier in the set matches it, so the
+    // CURRENCY_GAIN bonus above must not apply even though the amount is
+    // positive and would otherwise route to CURRENCY_GAIN.
+    expect(next.currencies).toEqual({ gold: 0, silver: 0, bronze: 10 });
+  });
+
+  it("a large negative FLAT does not invert a loss into a gain (the zero-clamp bug this phase fixes)", () => {
+    const bigFlatDiscount: Modifier = {
+      key: "CURRENCY_LOSS",
+      op: "FLAT",
+      value: -1000,
+      sourceId: "item_test_fixture",
+      sourceLabel: "Test Fixture",
+    };
+    const state = makeState({ currencies: { gold: 0, silver: 1, bronze: 0 } });
+    const next = applyCommand(
+      state,
+      { type: "COMMAND_ADJUST_CURRENCY", payload: { denomination: "bronze", amount: -10 } },
+      { modifiers: [bigFlatDiscount] }
+    );
+    // Without applyModifiers' zero clamp, (10 - 1000) reapplied with a
+    // negative sign would ADD to the player's currency instead of costing
+    // nothing. The clamp floors the magnitude at 0, so this is a true no-op,
+    // never a windfall. 20 bronze-equivalent normalizes to 1 silver, 0 bronze.
+    expect(next.currencies).toEqual({ gold: 0, silver: 1, bronze: 0 });
+  });
+
+  it("applies a modifier to a COMMAND_ADJUST_CURRENCY nested inside a dialogue choice's commands array", () => {
+    // §2.10's "recursion sites confirmed exhaustive" guarantee: ctx must
+    // thread through COMMAND_SELECT_DIALOGUE_CHOICE's commands loop exactly
+    // as it does for a top-level dispatch, not just the outer command.
+    const state = makeState({ currencies: { gold: 0, silver: 0, bronze: 0 } });
+    const next = applyCommand(
+      state,
+      {
+        type: "COMMAND_SELECT_DIALOGUE_CHOICE",
+        payload: {
+          dialogueId: "dialogue_mara_venn",
+          nextNodeId: "node_greeting",
+          commands: [
+            { type: "COMMAND_ADJUST_CURRENCY", payload: { denomination: "bronze", amount: 10 } },
+          ],
+        },
+      },
+      { modifiers: [currencyGain] }
+    );
+    // 10 * 1.5 = 15 — the nested COMMAND_ADJUST_CURRENCY inside the dialogue
+    // choice's commands array is modified exactly like a top-level dispatch.
+    expect(next.currencies).toEqual({ gold: 0, silver: 0, bronze: 15 });
+  });
+});
+
+describe("COMMAND_ADJUST_REPUTATION — modifiers", () => {
+  it("applies a targeted REPUTATION_GAIN modifier only to its own target", () => {
+    const modifier: Modifier = {
+      key: "REPUTATION_GAIN",
+      op: "PERCENT",
+      value: 1,
+      targetId: "faction_city_watch",
+      sourceId: "item_letter_of_introduction",
+      sourceLabel: "Letter of Introduction",
+    };
+    const state = makeState({ reputation: { factions: {}, actors: {} } });
+
+    const targeted = applyCommand(
+      state,
+      {
+        type: "COMMAND_ADJUST_REPUTATION",
+        payload: { targetType: "faction", targetId: "faction_city_watch", amount: 5 },
+      },
+      { modifiers: [modifier] }
+    );
+    expect(targeted.reputation.factions.faction_city_watch).toBe(10);
+
+    const untargeted = applyCommand(
+      state,
+      {
+        type: "COMMAND_ADJUST_REPUTATION",
+        payload: { targetType: "faction", targetId: "faction_thieves", amount: 5 },
+      },
+      { modifiers: [modifier] }
+    );
+    expect(untargeted.reputation.factions.faction_thieves).toBe(5);
+  });
+
+  it("amount: 0 is a no-op", () => {
+    const state = makeState({ reputation: { factions: { faction_city_watch: 10 }, actors: {} } });
+    const next = applyCommand(state, {
+      type: "COMMAND_ADJUST_REPUTATION",
+      payload: { targetType: "faction", targetId: "faction_city_watch", amount: 0 },
+    });
+    expect(next.reputation.factions.faction_city_watch).toBe(10);
   });
 });
 

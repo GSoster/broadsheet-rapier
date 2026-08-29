@@ -1,0 +1,11 @@
+{
+  "id": "item_duellists_rapier",
+  "name": "Duellist's Rapier",
+  "description": "Forged for the salle, not the street — a blade balanced by someone who cared whether it landed clean. Every thrust with it lands harder.",
+  "isUnlocked": true,
+  "imageAsset": "/content/assets/images/items/duellists_rapier.jpg",
+  "stackable": false,
+  "modifiers": [
+    { "key": "DUEL_DAMAGE_DEALT", "op": "FLAT", "value": 3 }
+  ]
+}

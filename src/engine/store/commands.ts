@@ -1,7 +1,22 @@
 import type { CommandType, MinigameLauncherPayload, PlayerState, Shift, StateCommand } from "../types";
 import { SHIFTS } from "../types";
+import { applyModifiers, type ModifierKey, type ModifierSet } from "../modifiers";
 
-type CommandHandler = (state: PlayerState, payload: Record<string, unknown>) => PlayerState;
+// Threaded through applyCommand so handlers can look up the player's active
+// item-granted modifiers without commands.ts importing content itself — the
+// ModifierSet is collected upstream (modifierResolution.ts) and handed in.
+// Optional throughout: an omitted ctx (or omitted ctx.modifiers) behaves
+// exactly as an empty ModifierSet would, preserving every pre-modifier-system
+// call site and test unchanged (docs/features/feature_modifier_system.md §2.10).
+export interface ApplyCommandContext {
+  modifiers?: ModifierSet;
+}
+
+type CommandHandler = (
+  state: PlayerState,
+  payload: Record<string, unknown>,
+  ctx: ApplyCommandContext
+) => PlayerState;
 
 function nextShift(shift: Shift): Shift {
   const index = SHIFTS.indexOf(shift);
@@ -101,29 +116,52 @@ const handlers: Record<DispatchableCommandType, CommandHandler> = {
     return costShifts && costShifts > 0 ? advanceShiftsBy(moved, costShifts) : moved;
   },
 
-  COMMAND_ADJUST_CURRENCY: (state, payload) => {
-    const { denomination, amount } = payload as {
+  // Modifier key is derived from the sign of `amount` (GAIN vs. LOSS), unless
+  // `payload.modifierKey` overrides it — the one escape valve a command
+  // needs (the dice minigame's CURRENCY_GAMBLING_WINNINGS carve-out, so an
+  // item bonus can't quietly break dice's EV-neutral odds). The magnitude is
+  // scaled in bronze-equivalent, not the payload's own denomination, because
+  // rounding in a coarse unit (e.g. gold) would destroy a small percentage
+  // before it could apply. amount === 0 short-circuits before any modifier
+  // pass — Math.sign(0) === 0 must never conjure currency out of a no-op.
+  // See docs/features/feature_modifier_system.md §2.8.
+  COMMAND_ADJUST_CURRENCY: (state, payload, ctx) => {
+    const { denomination, amount, modifierKey } = payload as {
       denomination: "gold" | "silver" | "bronze";
       amount: number;
+      modifierKey?: string;
     };
+    if (amount === 0) {
+      return state;
+    }
     const denominationValueInBronze = denomination === "gold" ? 400 : denomination === "silver" ? 20 : 1;
-    const nextTotal = currenciesToBronzeEquivalent(state.currencies) + amount * denominationValueInBronze;
+    const magnitude = Math.abs(amount) * denominationValueInBronze;
+    const key = modifierKey ?? (amount > 0 ? "CURRENCY_GAIN" : "CURRENCY_LOSS");
+    const modifiedMagnitude = applyModifiers(magnitude, ctx.modifiers ?? [], key);
+    const signedDelta = Math.sign(amount) * modifiedMagnitude;
+    const nextTotal = currenciesToBronzeEquivalent(state.currencies) + signedDelta;
     return { ...state, currencies: bronzeEquivalentToCurrencies(nextTotal) };
   },
 
-  COMMAND_ADJUST_REPUTATION: (state, payload) => {
+  COMMAND_ADJUST_REPUTATION: (state, payload, ctx) => {
     const { targetType, targetId, amount } = payload as {
       targetType: "faction" | "actor";
       targetId: string;
       amount: number;
     };
+    if (amount === 0) {
+      return state;
+    }
     const key = targetType === "faction" ? "factions" : "actors";
+    const modifierKey: ModifierKey = amount > 0 ? "REPUTATION_GAIN" : "REPUTATION_LOSS";
+    const modifiedMagnitude = applyModifiers(Math.abs(amount), ctx.modifiers ?? [], modifierKey, targetId);
+    const signedDelta = Math.sign(amount) * modifiedMagnitude;
     const current = state.reputation[key][targetId] ?? 0;
     return {
       ...state,
       reputation: {
         ...state.reputation,
-        [key]: { ...state.reputation[key], [targetId]: clampReputation(current + amount) },
+        [key]: { ...state.reputation[key], [targetId]: clampReputation(current + signedDelta) },
       },
     };
   },
@@ -190,14 +228,14 @@ const handlers: Record<DispatchableCommandType, CommandHandler> = {
     return { ...state, activeMinigame: payload as unknown as MinigameLauncherPayload };
   },
 
-  COMMAND_RESOLVE_MINIGAME: (state, payload) => {
+  COMMAND_RESOLVE_MINIGAME: (state, payload, ctx) => {
     const { isVictory } = payload as { isVictory: boolean };
     const minigame = state.activeMinigame;
     if (!minigame) return state;
     const followUpCommands = isVictory ? minigame.onSuccessCommands : minigame.onFailureCommands;
     let next: PlayerState = { ...state, activeMinigame: null };
     for (const command of followUpCommands) {
-      next = applyCommand(next, command);
+      next = applyCommand(next, command, ctx);
     }
     return next;
   },
@@ -224,7 +262,7 @@ const handlers: Record<DispatchableCommandType, CommandHandler> = {
   // choice ends the conversation," handled by skipping the dialogueProgress
   // update entirely, not by substituting the current node id back in (which
   // would double-count a visit to the node the player is leaving).
-  COMMAND_SELECT_DIALOGUE_CHOICE: (state, payload) => {
+  COMMAND_SELECT_DIALOGUE_CHOICE: (state, payload, ctx) => {
     const { dialogueId, nextNodeId, commands } = payload as {
       dialogueId: string;
       nextNodeId: string | null;
@@ -239,7 +277,7 @@ const handlers: Record<DispatchableCommandType, CommandHandler> = {
     // handler as `undefined`, not `[]`. Same `?? []` pattern already used for
     // COMMAND_ADVANCE_ENDEAVOR_PHASE's optional unlocksNodesOnComplete.
     for (const command of commands ?? []) {
-      next = applyCommand(next, command);
+      next = applyCommand(next, command, ctx);
     }
     return next;
   },
@@ -262,12 +300,16 @@ const handlers: Record<DispatchableCommandType, CommandHandler> = {
   COMMAND_CLOSE_DIALOGUE: (state) => ({ ...state, activeDialogue: null }),
 };
 
-export function applyCommand(state: PlayerState, command: StateCommand): PlayerState {
+export function applyCommand(
+  state: PlayerState,
+  command: StateCommand,
+  ctx: ApplyCommandContext = {}
+): PlayerState {
   if (command.type === "COMMAND_NEXT_DAY") {
     throw new Error(
       "COMMAND_NEXT_DAY is internal-only and cannot be dispatched directly; it runs as part of COMMAND_ADVANCE_SHIFT."
     );
   }
   const handler = handlers[command.type];
-  return handler(state, command.payload);
+  return handler(state, command.payload, ctx);
 }
