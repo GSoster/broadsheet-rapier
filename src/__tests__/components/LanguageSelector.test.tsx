@@ -13,8 +13,10 @@ beforeEach(() => {
 describe("LanguageSelector", () => {
   it("renders both locale options, with the store's current locale selected", () => {
     render(<LanguageSelector />);
-    expect(screen.getByText("English")).toBeInTheDocument();
-    expect(screen.getByText("Português (Brasil)")).toBeInTheDocument();
+    // Flag emoji prefix each option's name (🇺🇸 English / 🇧🇷 Português) — a
+    // purely visual affordance alongside the text, not a replacement for it.
+    expect(screen.getByText("🇺🇸 English")).toBeInTheDocument();
+    expect(screen.getByText("🇧🇷 Português (Brasil)")).toBeInTheDocument();
     expect(screen.getByRole("combobox")).toHaveValue("en");
   });
 

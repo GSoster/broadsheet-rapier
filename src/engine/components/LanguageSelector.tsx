@@ -12,6 +12,17 @@ const LOCALE_NAMES: Record<Locale, string> = {
   "pt-BR": "Português (Brasil)",
 };
 
+// Plain emoji, not image assets — same zero-asset, no-path-resolution-risk
+// reasoning as WorldClockHud's Shift/Season/Weather icons. A flag is a
+// purely visual affordance alongside the text name, not a substitute for
+// it, and not a claim about the language belonging to that country — 🇺🇸 is
+// the conventional flag paired with 🇧🇷 for "English" in software that
+// otherwise has no English-speaking-country locale variant to pick from.
+const LOCALE_FLAGS: Record<Locale, string> = {
+  en: "🇺🇸",
+  "pt-BR": "🇧🇷",
+};
+
 // Header/HUD-level control (mounted inside WorldClockHud) — the one and
 // only place useLocaleStore.setLocale is called from player interaction.
 // Reads/writes useLocaleStore directly; App.tsx's own effect (keyed on the
@@ -31,7 +42,7 @@ export function LanguageSelector() {
     >
       {LOCALES.map((localeOption) => (
         <option key={localeOption} value={localeOption}>
-          {LOCALE_NAMES[localeOption]}
+          {LOCALE_FLAGS[localeOption]} {LOCALE_NAMES[localeOption]}
         </option>
       ))}
     </select>
