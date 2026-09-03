@@ -165,7 +165,7 @@ No schema changes. `content-integrity.test.ts`'s existing glob/referential-integ
 ## Status
 
 **Implemented.**
-- CHANGELOG: `[Unreleased]` — "Notification system (`game-design-spec.md` §12)...".
+- CHANGELOG: `[Unreleased]` — "Notification system (`game-design-spec.md` §13)...". (Quoted as of `game-design-spec.md`'s current numbering; the actual `CHANGELOG.md` entry, an append-only historical record, still says §12, the section number that was true when it was written — see `docs/decisions.md`'s 2026-09-03 Progression Philosophy entry for why history isn't retroactively renumbered.)
 - decisions.md: 2026-08-13 (third follow-up) — the nested-command diffing finding, the `useRef` reload-false-positive guard, the store-only/non-persisted call, and the position/z-index/reputation-scope decisions confirmed directly with the user.
-- `game-design-spec.md` §12 added; `web-implementation.md` §10 added; directory structure listing updated.
+- `game-design-spec.md` §13 added; `web-implementation.md` §10 added; directory structure listing updated.
 - Verified live via `ui-visual-check`: currency/item/reputation toasts fire correctly for nested dialogue-choice and duel-outcome commands; Endeavor completion fires exactly once on the real transition; a page reload with an already-completed Endeavor produces **no** false-positive toast (the specific bug the `useRef` seeding guards against).

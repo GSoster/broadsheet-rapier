@@ -13,7 +13,7 @@ without inventing it now.
 > **On gap #7 and reputation modifiers.** A `+25% REPUTATION_GAIN` letter
 > combined with uncapped repeat conversations does farm reputation 25% faster.
 > Unlike the currency case (§2.8), this is **self-limiting**: reputation is
-> bounded at +100 (`game-design-spec.md` §7), so the modifier changes how fast
+> bounded at +100 (`game-design-spec.md` §8), so the modifier changes how fast
 > a ceiling is reached, not whether it can be exceeded. No carve-out needed —
 > noted so the asymmetry with currency is deliberate rather than overlooked.
 
@@ -848,7 +848,7 @@ an endeavor reward from **dice winnings** — and that one matters.
 **The dice game is exactly EV-neutral, and a gain-only modifier breaks that.**
 Two d6 produce an even sum in 18 of 36 outcomes. A win nets `+wager`, a loss
 `−wager`, so expected value is precisely zero — which is what
-`game-design-spec.md` §9 designed it to be.
+`game-design-spec.md` §10 designed it to be.
 
 Apply a `+5% CURRENCY_GAIN` pendant. The win is a positive delta and gets
 modified; the loss is negative and doesn't. Per throw:

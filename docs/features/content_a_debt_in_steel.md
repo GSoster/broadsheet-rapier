@@ -80,12 +80,12 @@ From a fresh save: player starts able to reach `poi_crooked_hour_tavern` (alread
 ## Consistency check
 
 - `poi_crooked_hour_tavern.json`'s `actorIds` and `district_lantern_ward.json`'s `poiIds` are the only existing files touched — both are the direct addition points, not incidental.
-- `game-design-spec.md` §8 (Actor content model) and §9 (minigames) stay accurate as written — nothing here changes what those fields mean, only adds a second real instance.
+- `game-design-spec.md` §9 (Actor content model) and §10 (minigames) stay accurate as written — nothing here changes what those fields mean, only adds a second real instance.
 - No other content references `poi_crooked_hour_tavern` or `district_lantern_ward` in a way this changes.
 
 ## Environment notes
 
-None — no build/runtime-config-derived values introduced. Art assets for `actor_bookkeeper`, `actor_anselm_draye`, `actor_duro_vantry`, and `item_vantry_rapier` don't exist yet; each `imageAsset` points at a sensibly-named path under `public/content/assets/images/` that isn't populated. Per `game-design-spec.md` §10, `AssetFallback` visibly flags a missing/failed visual asset rather than failing silently — this is the intended, already-established behavior for a not-yet-supplied image, not a bug to fix in this pass. `poi_widowmaker_alley`'s art (`widowmaker_alley.jpg`) was already supplied and committed in a prior turn.
+None — no build/runtime-config-derived values introduced. Art assets for `actor_bookkeeper`, `actor_anselm_draye`, `actor_duro_vantry`, and `item_vantry_rapier` don't exist yet; each `imageAsset` points at a sensibly-named path under `public/content/assets/images/` that isn't populated. Per `game-design-spec.md` §11, `AssetFallback` visibly flags a missing/failed visual asset rather than failing silently — this is the intended, already-established behavior for a not-yet-supplied image, not a bug to fix in this pass. `poi_widowmaker_alley`'s art (`widowmaker_alley.jpg`) was already supplied and committed in a prior turn.
 
 ## Test plan
 

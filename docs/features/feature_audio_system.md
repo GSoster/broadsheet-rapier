@@ -12,7 +12,7 @@ Feature/Engine.
 
 ## Existing-capability check
 
-Nothing existing covered audio playback at all — `AssetFallback`'s `kind="audio"` renders a visible `<audio controls>` element, a "browsable" pattern, not a fire-and-forget SFX player. `game-design-spec.md` §10 stated *all* assets (visual and audio) "must never fail silently" — directly contradicting this feature's requirement, so the spec text itself needed amending (not just appending alongside), which was flagged explicitly and done as part of this phase rather than left contradictory.
+Nothing existing covered audio playback at all — `AssetFallback`'s `kind="audio"` renders a visible `<audio controls>` element, a "browsable" pattern, not a fire-and-forget SFX player. `game-design-spec.md` §11 stated *all* assets (visual and audio) "must never fail silently" — directly contradicting this feature's requirement, so the spec text itself needed amending (not just appending alongside), which was flagged explicitly and done as part of this phase rather than left contradictory.
 
 **Is this logic-driven or content-driven?** This question — asked explicitly because the spec template's existing-capability-check section forces it — is what produced the phase's core design decision: dice win/lose has no content-JSON representation to hang a schema field off, so it's component-owned; District/POI entry is exactly what `imageAsset` already models, so it's an optional schema field. Two mechanisms, one shared utility, rather than forcing both through either shape.
 

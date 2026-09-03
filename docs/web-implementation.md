@@ -128,7 +128,7 @@ export interface PlayerState {
 
 ## 5. Content Schema Field Reference (Zod)
 
-Concrete field types, matching `game-design-spec.md` §8:
+Concrete field types, matching `game-design-spec.md` §9:
 
 - **Base node fields** (Settlement, District, POI, Actor): `id: string`, `name: string`, `description: string`, `isUnlocked: boolean`, `imageAsset?: string`.
 - **District / POI** additionally: `controllingFactionId?: string`, `factionInfluence?: Record<string, number>`, `onEnter: EntryEffect[]` (default `[]`, via `TriggerableSchema` — effects run whenever this node itself is entered; see `docs/features/feature_triggerable_effects.md`).
@@ -279,7 +279,7 @@ public/
 ### Audio Handling (implemented)
 
 - Shared fail-silent player: `src/engine/audio/playSound.ts`. Takes an asset path and an injectable `{ audioFactory? }` option (defaulting to `(src) => new Audio(src)`), attempts playback, and swallows all three failure shapes — the factory throwing synchronously, `.play()` throwing synchronously, and `.play()` returning a rejected promise — without ever throwing, blocking, or interrupting gameplay. At most logs a `console.warn` in dev (`import.meta.env.DEV`).
-- **Deliberate contrast with the visual `AssetFallback` rule above.** A missing/failed *image* must be loudly, visibly flagged (purple `MISSING` placeholder) because content authors need to catch it during development. A missing/failed *sound* must degrade silently — SFX are non-blocking and non-critical to gameplay, and an audible glitch or a thrown error would be a worse player experience than simply no sound. Same underlying "missing asset" problem, opposite resolution, because the two asset kinds have different failure costs. `game-design-spec.md` §10 states this as a domain-level rule, not just an implementation detail.
+- **Deliberate contrast with the visual `AssetFallback` rule above.** A missing/failed *image* must be loudly, visibly flagged (purple `MISSING` placeholder) because content authors need to catch it during development. A missing/failed *sound* must degrade silently — SFX are non-blocking and non-critical to gameplay, and an audible glitch or a thrown error would be a worse player experience than simply no sound. Same underlying "missing asset" problem, opposite resolution, because the two asset kinds have different failure costs. `game-design-spec.md` §11 states this as a domain-level rule, not just an implementation detail.
 - Two independent trigger mechanisms, matching how each sound is owned:
   - **Logic-driven**: dice win/lose in `DiceGame.tsx` (`WIN_SOUND_ASSET`/`LOSE_SOUND_ASSET` constants, fired from `throwDice` right after the roll result is computed) — component-owned, tied to a game-logic outcome (`result.isVictory`), not content data. Not schema-driven. Takes an injectable `playSound?: (src: string) => void` prop (defaulting to the real utility), mirroring the existing injectable `random` prop, for deterministic tests.
   - **Content-driven**: a `{ type: "SOUND"; asset }` entry in the District/POI content schemas' `onEnter: EntryEffect[]` (via `TriggerableSchema`, `.default([])` — see `docs/features/feature_triggerable_effects.md`), played via `playSound` in `App.tsx` — for POI, in `onSelectPoi` (a real "player chose to enter this POI" moment); for District, in a mount-only `useEffect` against the currently-resolved district, **not** in `onLeave` (which dispatches `COMMAND_MOVE_TO_DISTRICT` today but only means "left a POI back into the same district" — there's no real district-to-district travel yet, so wiring the sound there would misrepresent "leaving a building" as "arriving in a district"). Both call sites route through `src/engine/utils/entryEffects.ts`'s typed `EntryEffect[]` computation (`computePoiEntryEffects`/`computeDistrictEntryEffects`) plus an in-`App()` executor — the generalization `game-design-spec.md`'s Open Design Gap #9 predicted, once a second effect type (`autoDialogueOnEnter`, now `onPoiEnter`'s `DIALOGUE` effect) actually existed. See `docs/features/feature_dialogue_visibility_and_auto_triggers.md` (original generalization) and `docs/features/feature_triggerable_effects.md` (the trigger *field* unification across District/POI/EndeavorPhase/Endeavor).
@@ -289,7 +289,7 @@ public/
 
 - Minigames are stateless runners in `src/engine/minigames/`, one file per `MinigameType`, registered in an `index.ts` lookup keyed by type (`minigameResolvers`).
 - Launched via `COMMAND_START_MINIGAME(payload)`. Resolved via `COMMAND_RESOLVE_MINIGAME(isVictory)`, which dispatches the payload's `onSuccessCommands` or `onFailureCommands`.
-- This section defines the plumbing contract; `LOCKPICKING`/`FISHING` mechanics remain an open design gap — see `game-design-spec.md` §9 and § Open Design Gaps.
+- This section defines the plumbing contract; `LOCKPICKING`/`FISHING` mechanics remain an open design gap — see `game-design-spec.md` §10 and § Open Design Gaps.
 
 ### DICE (implemented)
 
@@ -312,7 +312,7 @@ public/
 
 ## 10. Notification System
 
-Implements `game-design-spec.md` §12. See `docs/features/feature_notification_system.md` for full design rationale — summarized here as the concrete shape:
+Implements `game-design-spec.md` §13. See `docs/features/feature_notification_system.md` for full design rationale — summarized here as the concrete shape:
 
 - **`NotificationEvent`** (`src/engine/store/notifications.ts`) is a discriminated union on `kind`: `CURRENCY` (`deltaBronze: number`), `ITEM` (`itemId`, signed `quantity`), `REPUTATION` (`targetType: "actor"|"faction"`, `targetId`, signed `amount`), `ENDEAVOR_COMPLETE` (`endeavorId`). Every variant carries `id`, `timestamp`, and a `tone: "gain"|"loss"|"info"`.
 - **Store-only, like `eventLog` — never part of `PlayerState`/`PlayerStateSchema`, never persisted.** `PlayerStore.notifications: NotificationEvent[]`; `resetProgress`/`importSave` clear it the same way they already clear `eventLog`.

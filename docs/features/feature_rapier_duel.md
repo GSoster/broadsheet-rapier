@@ -24,7 +24,7 @@ None yet — this phase is deliberately engine-only (see Reachability below). No
 
 ## Consistency check
 
-`game-design-spec.md` §9's "not yet defined for the remaining three types" language names `DUEL` explicitly — updated to drop it now that it's resolved, mirroring exactly how `DICE`'s own resolution was documented. Open Design Gap #1 (`MinigameLauncherPayload.config` becoming a discriminated union) updated to reflect DICE+DUEL now covered, LOCKPICKING/FISHING still not. `web-implementation.md` §7's directory-structure note ("`duel.ts`... doesn't exist yet and shouldn't be stubbed out ahead of its spec") updated — this phase is that spec. New Open Design Gap #11 added for poise-scaling-with-equipped-rapier (see Open Questions).
+`game-design-spec.md` §10's "not yet defined for the remaining three types" language names `DUEL` explicitly — updated to drop it now that it's resolved, mirroring exactly how `DICE`'s own resolution was documented. Open Design Gap #1 (`MinigameLauncherPayload.config` becoming a discriminated union) updated to reflect DICE+DUEL now covered, LOCKPICKING/FISHING still not. `web-implementation.md` §7's directory-structure note ("`duel.ts`... doesn't exist yet and shouldn't be stubbed out ahead of its spec") updated — this phase is that spec. New Open Design Gap #11 added for poise-scaling-with-equipped-rapier (see Open Questions).
 
 ## Environment notes
 
