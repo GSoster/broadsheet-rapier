@@ -38,7 +38,13 @@ cd <repo root>
 timeout 30 bash -c 'until curl -sf http://localhost:5173 >/dev/null; do sleep 1; done'
 ```
 
-Stop it when done: `lsof -ti:5173 -sTCP:LISTEN | xargs -r kill`
+Stop it when done: `lsof -ti:5173 -sTCP:LISTEN | xargs -r kill` on
+Unix. **`lsof` is not installed on this project's Windows/Git-Bash
+environment** — it silently no-ops there instead of failing loudly, so
+the dev server keeps running unnoticed. Use PowerShell instead:
+`Get-NetTCPConnection -LocalPort 5173 -ErrorAction SilentlyContinue | Select-Object -ExpandProperty OwningProcess -Unique | ForEach-Object { Stop-Process -Id $_ -Force -ErrorAction SilentlyContinue }`
+(via the PowerShell tool, not Bash — `$_`/`ForEach-Object` don't survive
+Bash's quoting).
 
 ## Simple screenshot (no interaction)
 
@@ -92,6 +98,17 @@ const { chromium } = require('playwright');
 
 Run it with `node <scratchpad>/script.js <out1.png> <out2.png>`.
 
+**A navigation can land on an already-open overlay — screenshot before
+scripting the next click, don't assume the landing screen is bare.**
+This project's content frequently auto-triggers a dialogue on POI entry
+(`Triggerable`/`onPoiEnter`, see `feature_triggerable_effects.md`) — a
+click sequence written against a bare `NodeInteractionCanvas` can hang
+for the full Playwright timeout with `<div class="fixed inset-0
+z-50 ...">... intercepts pointer events` in the error, because a
+`DialogueOverlay`/`MinigameOverlay` is already covering the target
+element. Screenshot immediately after each navigation step first; only
+add the next click once you can see what's actually on screen.
+
 **Always check `CONSOLE_ERRORS` before declaring success.** A 404 for
 a missing content asset is expected (it proves `AssetFallback`'s
 placeholder path) — anything else (a thrown exception, a React error
@@ -111,6 +128,7 @@ boundary trip) is a real failure the screenshot alone won't show you.
 
 ## Cleanup
 
-Kill the dev server (`lsof -ti:5173 ... | xargs -r kill`). The
-scratchpad's throwaway `node_modules`/`package.json` can be left or
-removed — it's outside the repo and never committed.
+Kill the dev server (see the platform-specific commands under "Dev
+server" above). The scratchpad's throwaway `node_modules`/
+`package.json` can be left or removed — it's outside the repo and
+never committed.

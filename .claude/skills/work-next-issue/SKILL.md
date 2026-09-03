@@ -51,12 +51,19 @@ and "the Project board's Backlog column" as the same thing.
 
 1. **Self-heal orphaned issues first.** Cross-check
    `gh issue list --state open --label feature-engine` and
-   `--label content-adventure` against the board
-   (`gh project item-list 2 --owner GSoster --format json`). An open,
-   labeled issue that isn't on the board at all is a real gap this project
-   has hit twice before (issues #3 and #4 were created but never added) —
-   add it (`gh project item-add`) with Status "Backlog" before doing
-   anything else.
+   `--label content-adventure` against the board. Fetch the board
+   filtered to just `number`/`status`/`title` — `jq` is not installed in
+   this environment, so pipe through Python instead:
+   `gh project item-list 2 --owner GSoster --format json | python -c "import json,sys; d=json.load(sys.stdin); [print(i['content']['number'], i['status'], i['title']) for i in d['items']]"`
+   (use `jq '.items[] | {number: .content.number, status, title}'` instead
+   if a future environment has it) — **not** the raw unfiltered call,
+   which returns every item's full issue body (every Backlog/Done issue's
+   entire Description) and burns real context for no reason across a run
+   that only needs three fields per item. An open, labeled issue that
+   isn't on the board at all is a real gap this project has hit twice
+   before (issues #3 and #4 were created but never added) — add it
+   (`gh project item-add`) with Status "Backlog" before doing anything
+   else.
 2. **Re-derive the board's field ids live** —
    `gh project field-list 2 --owner GSoster --format json` — rather than
    trusting hardcoded ones. (As of this writing: project id
