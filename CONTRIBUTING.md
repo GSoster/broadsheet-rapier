@@ -5,7 +5,7 @@ This is a solo, closed-source project (see `LICENSE`). This file exists to keep 
 ## Before Writing Anything
 
 1. Read `CLAUDE.md` and everything under `docs/`.
-2. Check `docs/execution-plan.md` for the current phase. Work in phase order — don't start a later phase before the current one is reviewed.
+2. Check `docs/features/README.md` for what's already shipped, and `docs/execution-plan.md` for the historical scaffold phases it built on (all complete). Current and future work goes through `docs/feature-workflow.md`'s stage process, not a numbered phase.
 3. If a task isn't covered by the docs, stop and ask. Don't assume or invent an answer.
 4. For anything feature-shaped (new engine capability, new minigame, new content/adventure) beyond a small fix, follow `docs/feature-workflow.md` — draft a spec under `docs/features/` before implementing, per that doc's process.
 5. Check `.claude/skills/README.md` for the available Claude Code skills — which run automatically, which need to be explicitly invoked or relevant to the request, and each one's actual trigger description.

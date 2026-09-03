@@ -36,7 +36,7 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for commit conventions, branching, and th
 - [docs/engine.md](docs/engine.md) — how the engine's major pieces interact (CQRS dispatch, EntryEffects, Dialogue, Minigames, the engine/content boundary), with diagrams
 - [docs/world-lore.md](docs/world-lore.md) — setting, era constraints, tone
 - [docs/narrative-inspirations.md](docs/narrative-inspirations.md) — narrative/UI inspiration priority hierarchy
-- [docs/execution-plan.md](docs/execution-plan.md) — phased build plan and current status
+- [docs/execution-plan.md](docs/execution-plan.md) — historical Phase 0 scaffold plan (complete); see `docs/feature-workflow.md` and `docs/features/README.md` for current process/status
 - [docs/decisions.md](docs/decisions.md) — decision log (why calls were made, not just what changed)
 - [CHANGELOG.md](CHANGELOG.md) — notable changes
 - [CLAUDE.md](CLAUDE.md) — operating directives for AI-assisted development

@@ -11,9 +11,9 @@ This project is an interactive 2D point-and-click web simulation set in a 17th-c
 - **Web Implementation Rules:** How those rules are implemented in this stack (types, schemas, persistence, directory structure, asset handling) MUST strictly follow `@docs/web-implementation.md`.
 - **Do not invent domain rules.** If a task requires a rule not present in `@docs/game-design-spec.md` or `@docs/web-implementation.md` — e.g. minigame resolution mechanics, reputation effect thresholds, economy pricing — STOP and flag the gap instead of assuming an answer. These are documented as open gaps in `@docs/game-design-spec.md`.
 
-## 2. Scope Boundary — Technical Scaffold vs. Gameplay
+## 2. Scope Boundary — Spec-Driven, Not Invented
 
-`docs/execution-plan.md` currently defines **Phase 0: Technical Scaffold** only — proving the architecture works end-to-end with one inert vertical slice of content (loads, validates, renders). It does not yet define minigame mechanics, reputation effects, or economy balance. Do not implement gameplay systems beyond what's explicitly specified; flag what's missing instead.
+`docs/execution-plan.md`'s Phase 0 (Technical Scaffold) is complete — the architecture proved out end-to-end and the project has since shipped multiple real gameplay systems (minigames, branching dialogue, the modifier system, localization) and content phases through `docs/feature-workflow.md`'s stage process, which now governs all current and future work; `docs/features/README.md` is the live index of what's shipped. `docs/game-design-spec.md` still tracks genuinely undocumented domain rules (economy pricing, reputation-tier thresholds, minigame mechanics not yet specced) as open gaps. Do not implement gameplay systems beyond what's explicitly specified in a spec or `game-design-spec.md`; flag what's missing instead.
 
 ## 3. Directory Structure Blueprint
 - `docs/`: Lore, game design spec, web implementation spec, execution plan, decision log, and AI guidance files.
