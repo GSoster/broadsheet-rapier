@@ -28,6 +28,11 @@ export type DialogueChoice = z.infer<typeof DialogueChoiceSchema>;
 export const DialogueNodeSchema = z.object({
   id: z.string(),
   speaker: z.string(),
+  // Explicit, referentially-checked reference to the speaking Actor,
+  // preferred over speaker-name matching when present (see
+  // docs/features/feature_dialogue_speaker_reference.md). Left unset for a
+  // narration-style speaker with no Actor to reference (e.g. "Narration").
+  speakerActorId: z.string().optional(),
   text: z.string(),
   choices: z.array(DialogueChoiceSchema).default([]),
 });

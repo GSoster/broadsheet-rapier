@@ -5,6 +5,7 @@
     "node_ask_second": {
       "id": "node_ask_second",
       "speaker": "Anselm Draye",
+      "speakerActorId": "actor_anselm_draye",
       "text": "\"You saw that. Twelve silver I don't have, and now a blade I've never held with any conviction.\" He's not quite looking at you. \"I need someone at my shoulder Thursday. Just to stand there. Will you?\"",
       "choices": [
         {
@@ -23,6 +24,7 @@
     "node_fee_offered": {
       "id": "node_fee_offered",
       "speaker": "Anselm Draye",
+      "speakerActorId": "actor_anselm_draye",
       "text": "Relief, badly hidden. \"Three silver now, whatever happens Thursday. You're owed that much for the company alone.\"",
       "choices": [
         {

@@ -5,6 +5,7 @@
     "node_greeting": {
       "id": "node_greeting",
       "speaker": "Duro Vantry",
+      "speakerActorId": "actor_duro_vantry",
       "text": "He gives you an unhurried once-over and nothing else. \"Nothing to settle between us. Not yet, anyway.\"",
       "choices": [
         {

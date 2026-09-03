@@ -471,16 +471,21 @@ function App() {
   const openNode = openDialogue
     ? openDialogue.nodes[resolveDialogueEntryNodeId(openDialogue, dialogueProgress[openDialogue.id])]
     : null;
-  // Matched by display name, not Actor.dialogueId — a scene an Actor
-  // *appears* in (an Endeavor's/EndeavorPhase's onPoiEnter, or a minigame's
-  // onSuccessCommands/onFailureCommands opening a reckoning dialogue) is
-  // very often not that Actor's own home dialogue (see
+  // Prefers speakerActorId (an explicit, referentially-checked reference,
+  // immune to locale since ids never translate) when the node sets one;
+  // falls back to matching display name against Actor.name for a
+  // narration-style node with no Actor to reference (e.g. "Narration") —
+  // see docs/features/feature_dialogue_speaker_reference.md. A scene an
+  // Actor *appears* in (an Endeavor's/EndeavorPhase's onPoiEnter, or a
+  // minigame's onSuccessCommands/onFailureCommands opening a reckoning
+  // dialogue) is very often not that Actor's own home dialogue (see
   // docs/features/content_a_debt_in_steel.md's dialogueId-split design and
-  // game-design-spec.md Open Design Gap #14). DialogueNode.speaker is
-  // already a free-text display string that content authors keep in sync
-  // with the speaking Actor's name, so matching on it resolves a portrait
-  // for every scene that Actor speaks in, not just their own.
-  const speakerActor = localizedActors.find((a) => a.name === openNode?.speaker);
+  // game-design-spec.md Open Design Gap #14) — either resolution path
+  // still needs to resolve a portrait for every scene that Actor speaks
+  // in, not just their own.
+  const speakerActor = openNode?.speakerActorId
+    ? localizedActors.find((a) => a.id === openNode.speakerActorId)
+    : localizedActors.find((a) => a.name === openNode?.speaker);
 
   const handleSelectActor = (actorId: string) => {
     setSelectedActorId(actorId);

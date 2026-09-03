@@ -5,6 +5,7 @@
     "node_greeting": {
       "id": "node_greeting",
       "speaker": "The Bookkeeper",
+      "speakerActorId": "actor_bookkeeper",
       "text": "He doesn't look up from the ledger. \"Filed and witnessed. That's all I have to say about anyone's business, including yours.\"",
       "choices": [
         {

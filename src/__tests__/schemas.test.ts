@@ -234,6 +234,26 @@ describe("DialogueSchema", () => {
     };
     expect(DialogueSchema.safeParse(invalid).success).toBe(false);
   });
+
+  it("accepts a node with speakerActorId set (the starter fixture already sets it)", () => {
+    expect(validDialogue.nodes.node_greeting).toHaveProperty("speakerActorId", "actor_mara_venn");
+    expect(DialogueSchema.safeParse(validDialogue).success).toBe(true);
+  });
+
+  it("accepts a node with speakerActorId omitted (a narration-style speaker with no Actor)", () => {
+    const withoutSpeakerActorId = {
+      ...validDialogue,
+      nodes: {
+        ...validDialogue.nodes,
+        node_greeting: {
+          ...validDialogue.nodes.node_greeting,
+          speakerActorId: undefined,
+        },
+      },
+    };
+    delete withoutSpeakerActorId.nodes.node_greeting.speakerActorId;
+    expect(DialogueSchema.safeParse(withoutSpeakerActorId).success).toBe(true);
+  });
 });
 
 describe("ItemSchema", () => {

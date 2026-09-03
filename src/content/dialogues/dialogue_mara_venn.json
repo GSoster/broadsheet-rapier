@@ -5,6 +5,7 @@
     "node_greeting": {
       "id": "node_greeting",
       "speaker": "Mara Venn",
+      "speakerActorId": "actor_mara_venn",
       "text": "Another broadsheet gone quiet and nobody's talking. Funny how that keeps happening to the ones printing the truth.",
       "choices": [
         {
@@ -32,6 +33,7 @@
     "node_engaged": {
       "id": "node_engaged",
       "speaker": "Mara Venn",
+      "speakerActorId": "actor_mara_venn",
       "text": "She leans in, voice low. \"Whoever's behind it paid well to keep it that way. I hear things, but hearing and telling are different coin.\"",
       "choices": [
         {
@@ -64,6 +66,7 @@
     "node_lead_revealed": {
       "id": "node_lead_revealed",
       "speaker": "Mara Venn",
+      "speakerActorId": "actor_mara_venn",
       "text": "There's a name — Corvin Thale, runs the numbers out of a warehouse near the Salt Quay. He's the one who paid to keep that press quiet. Careful how you go at him.",
       "choices": [
         {

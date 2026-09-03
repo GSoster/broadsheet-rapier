@@ -5,6 +5,7 @@
     "node_defeat": {
       "id": "node_defeat",
       "speaker": "Duro Vantry",
+      "speakerActorId": "actor_duro_vantry",
       "text": "He steps back, satisfied, wiping his blade. \"Debt's settled my way, then.\" Around you, the crowd's already losing interest, moving on to whatever's next. Nobody paid to see the second lose, they paid to see it settled.",
       "choices": [
         {

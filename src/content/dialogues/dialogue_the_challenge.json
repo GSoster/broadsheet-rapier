@@ -5,6 +5,7 @@
     "node_terms_read": {
       "id": "node_terms_read",
       "speaker": "The Bookkeeper",
+      "speakerActorId": "actor_bookkeeper",
       "text": "He unrolls a strip of paper and reads it the way another man might read a shipping manifest. \"Twelve silver, outstanding since the Feast of Saint Ilona. By the Ring's own charter, the debt may be settled in coin, in kind, or\" — a glance at the man beside him — \"in blood, properly witnessed.\"",
       "choices": [
         {
@@ -18,6 +19,7 @@
     "node_terms_set": {
       "id": "node_terms_set",
       "speaker": "The Bookkeeper",
+      "speakerActorId": "actor_bookkeeper",
       "text": "He taps the paper twice, rolls it, tucks it away. \"Filed and witnessed. The instrument is to be settled off Cutpurse Row, three days hence, at dusk. The clerks call it Instrument of Debt Resolution, District Filing 114.\" A dry pause. \"Everyone else calls it Widowmaker Alley. Even violence goes through paperwork in this city.\"",
       "choices": [
         {

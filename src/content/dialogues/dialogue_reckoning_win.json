@@ -5,6 +5,7 @@
     "node_victory": {
       "id": "node_victory",
       "speaker": "Duro Vantry",
+      "speakerActorId": "actor_duro_vantry",
       "text": "He lowers the blade, breathing hard, and there's something almost like respect in it. \"Debt's settled. Ring's satisfied.\" He nods once at the rapier. \"That's yours now, if you can hold it better than he could.\"",
       "choices": [
         {

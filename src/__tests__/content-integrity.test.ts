@@ -194,9 +194,11 @@ describe("content integrity: every file under src/content/ validates against its
 // for why that still needs a manual consistency sweep, not an automated
 // check).
 //
-// Scoped deliberately to the three relationships called out when this was
+// Scoped deliberately to the relationships called out when each was
 // added: Actor.factionIds -> Faction, POI.actorIds -> Actor (+ reverse:
-// Actor.poiId), District.poiIds -> POI (+ reverse: POI.districtId). Other
+// Actor.poiId), District.poiIds -> POI (+ reverse: POI.districtId),
+// Actor.dialogueId -> Dialogue, DialogueNode.speakerActorId -> Actor
+// (see docs/features/feature_dialogue_speaker_reference.md). Other
 // reference-shaped fields (controllingFactionId, factionInfluence keys,
 // District.settlementId, Endeavor.unlocksNodesOnComplete) are equally
 // checkable in principle but intentionally out of scope for this pass —
@@ -271,6 +273,18 @@ describe("content integrity: referential integrity", () => {
       it(`${actor.id}.dialogueId references an existing dialogue ("${dialogueId}")`, () => {
         expect(dialogueIdSet.has(dialogueId)).toBe(true);
       });
+    }
+  });
+
+  describe("DialogueNode.speakerActorId -> Actor", () => {
+    for (const dialogue of dialogues) {
+      const nodes = dialogue.nodes as Record<string, { speakerActorId?: string }>;
+      for (const [key, node] of Object.entries(nodes)) {
+        if (node.speakerActorId === undefined) continue; // narration-style node with no Actor to reference
+        it(`${dialogue.id}.nodes["${key}"].speakerActorId references an existing actor ("${node.speakerActorId}")`, () => {
+          expect(actorIdSet.has(node.speakerActorId as string)).toBe(true);
+        });
+      }
     }
   });
 
